@@ -38,3 +38,6 @@ coverage/
 
 # OS
 Thumbs.db
+
+# 멤버 워크트리 (CLAUDE.md 규칙 16, ONBOARDING §0.5)
+.worktrees/
