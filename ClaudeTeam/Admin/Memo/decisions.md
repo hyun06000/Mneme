@@ -11,6 +11,7 @@
 | 2026-05-06 | **빌드 언어 = AIL 전용, HEAAL 준수** | 모든 코드는 AIL. 부족 시 upstream(hyun06000/AIL)에 issue/PR (CLAUDE.md 룰 20) | 사용자 직접 발언 |
 | 2026-05-06 | 메시징 인프라 = Stoa | `https://ail-stoa.up.railway.app`, registry명 `Mneme-<role>`. Mneme-Admin 등록 완료(2026-05-05T22:46:56Z UTC). 파일시스템 inbox는 fallback (CLAUDE.md 룰 19.1~19.3) | 사용자 직접 발언 |
 | 2026-05-06 | Mneme의 데이터 표면 확장 | `identity/` + `Memo/` 둘 다 Mneme self↔future-self vault의 일부 (CLAUDE.md 룰 20.2.1) | 사용자 직접 발언 |
+| 2026-05-06 | Stoa 부족 기능도 upstream에 의뢰 | 우회 코드 X, hyun06000/Stoa에 issue/PR (CLAUDE.md 룰 19.4 — AIL 룰 20.1과 동일 패턴) | 사용자 직접 발언 |
 
 ## Brandon에게 위임 (선결 금지)
 - GitHub remote 이름·visibility (public/private)
