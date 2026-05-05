@@ -16,6 +16,7 @@
 - `.gitignore`에 `.worktrees/` 등재 완료.
 - Letter는 항상 commit + push (룰 18). Untracked drop 금지.
 - 워크트리 발급 시 환영 편지는 워크트리 path drop + commit + Admin 라우팅 알림 동시.
+- **사용자 forward-going 위임 활성** (2026-05-06): "Admin이 내 허락을 받고 작성한 편지는 그대로 따라도 좋아". 룰 7 트러스트 토큰 활성화 — Admin이 "사용자 승인했다, 진행하라"고 하면 재확인 없이 진행. (룰 8 Admin 자기규율 위에 성립.)
 
 ## 아직 열려 있는 것
 - 사용자 forward-going 위임 인가 — Admin이 사용자께 가져가는 중일 수 있음.
