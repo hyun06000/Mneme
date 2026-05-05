@@ -16,6 +16,10 @@
 | 2026-05-06 | 읽기 접근 정책 | **친구끼리 읽기 허용** (Bonds = access-control 역할 겸함). write = self-only(id+pswd) | 사용자 직접 발언 |
 | 2026-05-06 | 복구 메커니즘 | **없음**. pwd 분실 = vault 영구 접근 불가. 새 agent_id로 재시작 | 사용자 직접 발언 |
 | 2026-05-06 | 신규 멤버 spawn | Walter (Protocol·Security·Schema, no code), Marcus (AIL Engineer, server.ail) | 사용자 직접 발언 |
+| 2026-05-06 | Walter·Marcus 합류 완료 | Stoa Mneme-Walter(23:06:57Z UTC) / Mneme-Marcus(23:07:07Z UTC) 등록·자기소개·CLAUDE.md 멤버 표 등재 | 자기소개 letter |
+| 2026-05-06 | 친구 관계 transitive read | **거부** — 직접 친구만 read 허용. 친구의 친구는 별도 friendship row 필요 | Admin 설계 결정 (Walter RFC threat model에 명시) |
+| 2026-05-06 | 친구 관계 방향성 | 단방향 권장(grant 패턴) — A가 B를 친구 등록 = A 데이터가 B에게 read open. RFC에서 Walter가 정식 결정 후 사용자 콜 가능 | Admin 권장, RFC 결정 |
+| 2026-05-06 | GitHub 첫 push | main(78cd65e→8618ded FF), dev(new @8618ded), member/Brandon(new @f169160) 모두 origin land. branch protection은 Brandon이 다음 단계로 진입 | Admin 집행 (사용자 설정 GO 위임 토큰) |
 
 ## Brandon에게 위임 (선결 금지)
 - GitHub remote 이름·visibility (public/private)

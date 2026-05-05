@@ -85,8 +85,10 @@ ClaudeTeam/
 
 | 이름 | 호스트 언어 alias | 역할 | 폴더 |
 |------|---|------|------|
-| Admin | (호스트 언어 독음) | Lighthouse — 프로젝트 철학·방향·컨벤션 관리, 사용자와 직접 대화, **GitHub remote push 전담** | [ClaudeTeam/Admin/](ClaudeTeam/Admin/) |
-| Brandon | (호스트 언어 독음) | 로컬 Git/워크트리 관리자 — 멤버 워크트리 발급, 브랜치 hygiene, MR 검증, `gh` CLI | [ClaudeTeam/Brandon/](ClaudeTeam/Brandon/) |
+| Admin | 어드민 | Lighthouse — 프로젝트 철학·방향·컨벤션 관리, 사용자와 직접 대화, **GitHub remote push 전담** | [ClaudeTeam/Admin/](ClaudeTeam/Admin/) |
+| Brandon | 브랜든 | 로컬 Git/워크트리 관리자 — 멤버 워크트리 발급, 브랜치 hygiene, MR 검증, `gh` CLI | [ClaudeTeam/Brandon/](ClaudeTeam/Brandon/) |
+| Walter | 월터 | Protocol·Security·Schema 디자이너 — RFC-001-Mneme(인증·스키마·API·threat model) 작성. 코드 X | [ClaudeTeam/Walter/](ClaudeTeam/Walter/) |
+| Marcus | 마커스 | AIL Engineer — `server.ail` 구현 + `tests/run_all.sh` AC. 명세 X | [ClaudeTeam/Marcus/](ClaudeTeam/Marcus/) |
 
 > 위는 부트스트랩 직후 최소 구성. 추가 멤버는 사용자가 결정·spawn하는 시점에 Admin이 이 표에 한 줄 추가.
 
