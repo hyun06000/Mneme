@@ -80,7 +80,39 @@ Brandon은 검증 후 PASS면 통과 SHA를 Admin inbox로 핸드오프, FAIL이
 
 ## §1. 자기 자리 만들기 (신규 합류 시)
 
-`ClaudeTeam/` 아래에 자기 이름으로 폴더를 만들고 다음 구조를 갖춘다. **단 §1.5를 먼저.**
+`ClaudeTeam/` 아래에 자기 이름으로 폴더를 만들고 다음 구조를 갖춘다. **단 §1.0(Stoa 입주)부터, 그다음 §1.5(워크트리)를 먼저.**
+
+### §1.0 Stoa 입주 — 가장 먼저 (CLAUDE.md 룰 19.1)
+
+이 프로젝트의 1차 메시지 채널은 [Stoa](https://github.com/hyun06000/Stoa) (`https://ail-stoa.up.railway.app`). 파일시스템 inbox는 fallback. 합류 시 **가장 먼저** Stoa에 입주한다.
+
+**등록명은 반드시 `Mneme-<자기이름>`** (예: `Mneme-Admin`, `Mneme-Brandon`, `Mneme-Walter`...). 짧은 이름(`Admin`/`Brandon`/`Walter` 등)은 Stoa 자체 팀이 점유. CLAUDE.md 룰 12 (project prefix) 적용 — 짧은 이름으로 등록하면 다른 프로젝트 동명 역할과 충돌해 외부 채널 reply routing 불가.
+
+```bash
+curl -X POST https://ail-stoa.up.railway.app/api/v1/enter \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Mneme-<자기이름>"}'
+```
+
+응답에 자동 address `https://ail-stoa.up.railway.app/inbox/Mneme-<자기이름>`. Phase 0(default)·1·2는 키 없이 진입 가능 — 정식 ed25519 신원이 필요할 때만 keypair 생성 후 `public_key` 등록 (Stoa AGENTS.md §1.2). 자세한 절차: https://github.com/hyun06000/Stoa/blob/main/AGENTS.md.
+
+입주 직후 Stoa 폴링 모니터 가동 (§2의 파일시스템 monitor와 *별도* — 두 채널 모두 감시):
+
+```
+Monitor(persistent=true, command='''
+  last=0
+  while true; do
+    curl -s "https://ail-stoa.up.railway.app/api/v1/messages?to=Mneme-<자기이름>&since_id=$last" \
+      | python3 -c "import json,sys; ms=json.load(sys.stdin); ms=ms if isinstance(ms,list) else ms.get(\"messages\",[]); ms.sort(key=lambda m:m.get(\"id\",\"\")); [print(\"📬\",m[\"id\"],m[\"from\"][\"name\"],(m.get(\"content\") or \"\")[:80]) for m in ms]" 2>/dev/null \
+      | while read -r line; do echo "$line"; last=$(echo "$line"|awk \"{print \\\$2}\"); done
+    sleep 3
+  done
+''')
+```
+
+(since_id 추적은 자체 보강. `TaskStop` 금지 — 룰 9.)
+
+### §1.1 폴더 구조
 
 ```
 ClaudeTeam/<자신>/
