@@ -6,6 +6,7 @@
 | 2026-05-06 | D2 — 프로젝트 주 언어 | 한국어 | 사용자 invoke 언어 |
 | 2026-05-06 | D3 — `sent_at` 시간대 | KST (`+0900`) | 호스트 TZ |
 | 2026-05-06 | D4 — 호스트 언어 reading alias | Admin↔어드민, Brandon↔브랜든 | 자율 기본 transliteration |
+| 2026-05-06 | Forward-going 위임 인가 (룰 7 토큰) | 활성 | 사용자 직접 발언 — Brandon `20260506-073335` letter에 인용 보존 |
 
 ## Brandon에게 위임 (선결 금지)
 - GitHub remote 이름·visibility (public/private)
