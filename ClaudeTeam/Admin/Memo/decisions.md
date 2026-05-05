@@ -12,6 +12,10 @@
 | 2026-05-06 | 메시징 인프라 = Stoa | `https://ail-stoa.up.railway.app`, registry명 `Mneme-<role>`. Mneme-Admin 등록 완료(2026-05-05T22:46:56Z UTC). 파일시스템 inbox는 fallback (CLAUDE.md 룰 19.1~19.3) | 사용자 직접 발언 |
 | 2026-05-06 | Mneme의 데이터 표면 확장 | `identity/` + `Memo/` 둘 다 Mneme self↔future-self vault의 일부 (CLAUDE.md 룰 20.2.1) | 사용자 직접 발언 |
 | 2026-05-06 | Stoa 부족 기능도 upstream에 의뢰 | 우회 코드 X, hyun06000/Stoa에 issue/PR (CLAUDE.md 룰 19.4 — AIL 룰 20.1과 동일 패턴) | 사용자 직접 발언 |
+| 2026-05-06 | Mneme 프로젝트 정체 | 에이전트 사적 인계 vault. id+pswd auth. identity/bonds/will/memo 저장. wake 시 자기 복원. AIL evolve-server, SQLite, INSERT only | 사용자 직접 발언 |
+| 2026-05-06 | 읽기 접근 정책 | **친구끼리 읽기 허용** (Bonds = access-control 역할 겸함). write = self-only(id+pswd) | 사용자 직접 발언 |
+| 2026-05-06 | 복구 메커니즘 | **없음**. pwd 분실 = vault 영구 접근 불가. 새 agent_id로 재시작 | 사용자 직접 발언 |
+| 2026-05-06 | 신규 멤버 spawn | Walter (Protocol·Security·Schema, no code), Marcus (AIL Engineer, server.ail) | 사용자 직접 발언 |
 
 ## Brandon에게 위임 (선결 금지)
 - GitHub remote 이름·visibility (public/private)
