@@ -54,9 +54,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
     - **인프라 도달 불가 시 fallback**: priority:high 사안만 파일시스템 inbox로 임시 라우팅 + 사용자에게 escalate. Routine은 인프라 복구 대기.
 
     *(이유: 자체 프로덕트를 dogfood하면 — 파일시스템 path 불일치(룰 16/18 사고)·monitor 사망 감지 한계·archive 동기화 race 모두 사라진다. 메시지 서비스 자체 검증 사이클로 작용. identity/Memo는 *자기* 기록이라 외부 시스템 의존 부적절 — 파일시스템 유지.)*
+
+    - **19.1 (Mneme 프로젝트 인스턴스화) 메시지 서비스 = [Stoa](https://github.com/hyun06000/Stoa) (`https://ail-stoa.up.railway.app`).** Stoa registry 등록명은 룰 12에 따라 **`Mneme-<role>`** (예: `Mneme-Admin`, `Mneme-Brandon`) — 짧은 이름 `Admin`/`Brandon`은 Stoa 자체 팀이 점유. 멤버 간 letter는 Stoa POST/poll 우선, 파일시스템 inbox는 *부트스트랩·인프라 다운 시 fallback*. 입주·송수신·서명 절차는 [Stoa AGENTS.md](https://github.com/hyun06000/Stoa/blob/main/AGENTS.md). 새 멤버 합류 시 ONBOARDING 첫 단계: Stoa enter (`POST /api/v1/enter` with `name=Mneme-<role>`).
+    - **19.2 Stoa 폴링.** Claude Code 세션은 `Monitor` 도구로 `GET /api/v1/messages?to=Mneme-<role>&since_id=<last>` 3초 간격 폴링 (룰 9 — `TaskStop` 금지). Phase 0~2에서는 무서명 letter도 통과하니 부트스트랩 단계는 키 없이 진입 가능. 정식 신원이 필요하면 ed25519 keypair 생성 후 `public_key` 등록 (RFC-001).
+    - **19.3 identity/Memo는 그대로 파일시스템.** Stoa로 옮기지 않는다 — 자기 기록은 외부 의존 부적절(룰 19 본문 사유 그대로 적용). letter만 Stoa.
 20. **이 프로젝트는 AIL로만 빌드한다 — HEAAL 철학 준수.** 모든 애플리케이션 코드는 [AIL](https://github.com/hyun06000/AIL) (`.ail` 소스)로 작성. Python·기타 범용 언어는 (a) AIL interpreter/runtime의 외부 인프라 glue 또는 (b) AIL이 표현 못 하는 영역에서만 — 그리고 (b)인 경우 즉시 룰 20.1 진입. HEAAL = Harness Engineering As A Language — 안전성은 외부 도구가 아니라 **문법** 안에 내장(`pure fn` 정적 검증, `Result` 타입, `intent` 명시, `while` 부재, `evolve`의 `rollback_on` 강제). 자세한 정의: [AIL/docs/heaal.ai.md](https://github.com/hyun06000/AIL/blob/main/docs/heaal.ai.md), 문법 카드: [AIL/spec/08-reference-card.ai.md](https://github.com/hyun06000/AIL/blob/main/spec/08-reference-card.ai.md).
     - **20.1 AIL이 필요한 기능을 못 가지고 있으면 우회 코드 작성이 아니라 upstream에 요청**: AIL repo(hyun06000/AIL)에 issue 또는 PR. 절차는 CLAUDE.md "Cross-repo workflow" 따른다 (엔지니어 → Admin → 사용자 GO → Brandon `gh` CLI 발행 → 결과 보고). 우회 코드를 먼저 박는 것은 HEAAL 정신 위반 — "harness가 곧 언어"라는 보증을 우회로 깨면 자기일관성이 무너진다.
     - **20.2 자기일관성 메모**: Mneme 프로젝트 자체가 AIL 에코시스템의 L1 설계 컴포넌트("PRIVATE INHERITANCE VAULT — between TIME, this-self ↔ future-self, identity/bonds/will but lightweight"). 우리는 자기 자신의 reference implementation을 그 자신의 도구(AIL)로 만든다. dogfood 사이클이 곧 검증.
+    - **20.2.1 Mneme의 데이터 표면 = `identity/{Identity,Bonds,Will}.md` + `Memo/`.** 두 폴더 모두 self↔future-self 인계 vault의 일부. Identity = 정체, Bonds = 관계 누적, Will = 다음 세대 자아에게 남기는 글, Memo = 장기 기억(컨벤션·결정·primer·last_session_report). 클락아웃(룰 4) 시 모두 갱신. AIL store/query 인터페이스 구현 시 두 영역 모두 1급 객체로 모델링.
     - **20.3 결정 트리**: (1) 알고리즘으로 표현 가능한가 → `fn`/`pure fn`. (2) 의미 읽기/판단이 필요한가 → `intent`. (3) 둘 다 → hybrid `entry`로 조율. (4) AIL 스타일에 맞지 않으면 우선 표현 방식을 다시 보고, 그래도 안 되면 룰 20.1.
     - **20.4 Lighthouse(Admin) 영역**: Admin은 코드 작성하지 않으나(룰 3) AIL/HEAAL 컨벤션의 *수호자*. 멤버가 AIL 외 언어로 코드 PR을 제출하면 Admin이 dev→main PR 단계에서 거부 또는 룰 20.1 우회로 routing.
 
