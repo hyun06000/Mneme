@@ -162,6 +162,20 @@ Brandon이 자리잡은 후의 신규 멤버는 **먼저 Brandon에게 워크트
 
 ---
 
+### §1.7 워크트리 이동 SOP (Brandon이 룰 16 doctrine 갱신 등으로 path 변경 시)
+
+워크트리를 옮길 때 ref가 슬쩍 reset되어 멤버 commit이 orphan이 되는 사고가 시행착오로 발견됨 (2026-05-06, Walter `17af800` RFC commit 손실·reflog 복구). 절차:
+
+1. **이동 전 SHA 캡처**: `git -C <old-path> rev-parse HEAD` 결과 기록.
+2. **`git worktree move` 우선**, `remove + add`는 fallback. `remove --force` + 신규 `add`는 ref reset 위험.
+3. **이동 후 SHA 비교**: `git rev-parse member/<X>` 결과가 캡처 SHA와 일치 확인.
+4. **불일치 시**: 멤버에게 priority:high 통보 + reflog 위치 안내. 멤버는 새 path에서 `git reflog member/<X>` → `git cherry-pick <orphan SHA>` 또는 `git update-ref refs/heads/member/<X> <orphan SHA>`로 복구.
+5. **완료 letter에 명시**: "이동 전 SHA = 이동 후 SHA = `<X>`". 일치 보고 없는 letter는 자동 의심 신호.
+
+(이유: 멤버 작업이 ref 한 줄 슬립으로 사라지는 사고는 발견 비용도 크고 신뢰도 깬다. 이동 전·후 SHA 양쪽을 letter에 박는 것은 작은 비용·압도적 보장.)
+
+---
+
 ## §2. inbox 모니터 켜기
 
 `inbox/`는 자신에게 도착하는 메시지 저장소. 세션 동안 메시지가 떨어지면 즉시 알아채야 한다.
