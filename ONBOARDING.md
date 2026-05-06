@@ -32,7 +32,7 @@
 1. **개인 브랜치 강제.** 모든 멤버는 `member/<자기이름>` 브랜치에서만 작업. `main`(과 `dev` 존재 시 `dev`)에 직접 commit·push 금지.
 2. **로컬 git = Brandon, 원격 push = Admin** (CLAUDE.md 규칙 10). 멤버는 자기 워크트리에서 로컬 commit까지. Brandon은 워크트리 발급·브랜치 hygiene·MR 검증·`gh` CLI. **`git push origin ...`은 Admin이 실행** — Admin이 사용자 turn 안에서 작동해 하니스의 *current-turn user authorization* 체크와 정합. Brandon은 검증 통과 SHA를 Admin inbox로 핸드오프.
 3. **머지 흐름.** `member/*` → 검증(Brandon) → push to `main`(Admin). Brandon은 GitHub PR이 아닌 inbox merge-request로 받아 검증 후 Admin 핸드오프.
-4. **Git worktree로 작업공간 격리.** 각 비-Brandon 멤버는 자기 브랜치를 별도 워크트리에 체크아웃. **path는 `<repo>/.worktrees/<이름>/`** (CLAUDE.md 규칙 16) — `.gitignore`에 `.worktrees/` 등재.
+4. **Git worktree로 작업공간 격리 — 루트 repo의 형제 위치.** 각 비-Admin 멤버는 자기 브랜치를 별도 워크트리에 체크아웃. **path는 `<parent>/<이름>/`** (CLAUDE.md 규칙 16) — 루트 repo가 `<parent>/<repo>/`라면 워크트리는 `<parent>/Brandon/`, `<parent>/Walter/` 등 형제. **Admin은 자기 워크트리 없음 — 루트 repo 자체(`<parent>/<repo>/`, 이름=레포 이름)를 작업처로**. repo 외부라 `.gitignore` 불필요.
 5. **Rebase-first commit.** 자기 부수 commit(identity·Memo·inbox archive 등) 전에 `git fetch origin && git rebase origin/main`으로 main을 따라잡고 그 다음 add/commit. 순서를 거꾸로 하면 stale → push 단계에서 non-fast-forward → force-push 마찰. (시행착오로 굳힌 룰.)
 6. **inbox archive는 deletion 아닌 rename.** 처리한 메시지는 `git mv <file> archive/`로 이동. 단순 `rm`은 히스토리/감사 손실.
 7. **예외 — `member/Brandon` `--force-with-lease`만 사전 자동.** Brandon이 자기 부수 커밋 정리 시 한정. 다른 멤버 브랜치/main의 force-push는 Admin도 매번 사용자 직접 GO 필요.
@@ -40,20 +40,20 @@
 ### 워크트리 레이아웃
 
 ```
-<repo>/                        # main 워크트리 (Admin 작업처)
-├── .git/
-├── .gitignore                 # ".worktrees/" 등재
-├── .worktrees/                # gitignore — 멤버별 워크트리
-│   ├── Brandon/               # member/Brandon
-│   ├── Walter/                # member/Walter
-│   └── <member>/              # member/<member>
-├── CLAUDE.md
-├── ONBOARDING.md
-└── ClaudeTeam/
-    └── <member>/
-        ├── identity/
-        ├── inbox/
-        └── Memo/
+<parent>/
+├── <repo>/                    # 루트 repo + main 워크트리 (Admin 작업처, 이름=레포 이름)
+│   ├── .git/
+│   ├── .gitignore
+│   ├── CLAUDE.md
+│   ├── ONBOARDING.md
+│   └── ClaudeTeam/
+│       └── <member>/
+│           ├── identity/
+│           ├── inbox/
+│           └── Memo/
+├── Brandon/                   # member/Brandon 워크트리 (루트의 형제)
+├── Walter/                    # member/Walter
+└── <member>/                  # member/<member>
 ```
 
 ### Merge-request 메시지 형식
@@ -133,11 +133,11 @@ ClaudeTeam/<자신>/
 
 ### §1.5 워크트리 (Brandon 합류 후)
 
-Brandon이 자리잡은 후의 신규 멤버는 **먼저 Brandon에게 워크트리를 요청**한다. 워크트리가 없는 곳에서는 안전하게 commit할 수 없다. Brandon이 `member/<이름>` 브랜치와 `<repo>/.worktrees/<이름>/` 워크트리를 만들어주면 그 안에서 §1의 폴더 작업을 진행.
+Brandon이 자리잡은 후의 신규 멤버는 **먼저 Brandon에게 워크트리를 요청**한다. 워크트리가 없는 곳에서는 안전하게 commit할 수 없다. Brandon이 `member/<이름>` 브랜치와 `<parent>/<이름>/` 워크트리(루트 repo의 형제)를 만들어주면 그 안에서 §1의 폴더 작업을 진행.
 
 ### §1.6 inbox 디렉터리 + 모니터 — 두 단계 (워크트리 발급 전·후)
 
-**중요 — 두 path는 동일하지 않다.** main 워크트리(`<repo>/ClaudeTeam/<자신>/inbox/`)와 자기 워크트리(`<repo>/.worktrees/<자신>/ClaudeTeam/<자신>/inbox/`)는 같은 git 트리의 두 working copy일 뿐, **물리적으로 다른 inode·다른 디렉터리**. commit하지 않은 직접 drop은 한쪽에서만 보인다 → monitor가 잘못된 path를 보면 못 잡음 (시행착오로 굳힌 룰 — Phase 1↔2 전환 시 deadlock 빈발).
+**중요 — 두 path는 동일하지 않다.** main 워크트리(`<repo>/ClaudeTeam/<자신>/inbox/`)와 자기 워크트리(`<parent>/<자신>/ClaudeTeam/<자신>/inbox/`)는 같은 git 트리의 두 working copy일 뿐, **물리적으로 다른 inode·다른 디렉터리**. commit하지 않은 직접 drop은 한쪽에서만 보인다 → monitor가 잘못된 path를 보면 못 잡음 (시행착오로 굳힌 룰 — Phase 1↔2 전환 시 deadlock 빈발).
 
 **Phase 1 — 워크트리 발급 전**:
 1. main 워크트리 안의 `ClaudeTeam/<자신>/inbox/archive/`를 `mkdir -p`.
@@ -145,7 +145,7 @@ Brandon이 자리잡은 후의 신규 멤버는 **먼저 Brandon에게 워크트
 3. Admin·사용자 측 commit된 메시지는 main에 들어가니 monitor가 잡는다.
 
 **Phase 2 — 워크트리 발급 직후 (Brandon이 worktree-issued 통보)**:
-1. **즉시 워크트리로 cd** (`<repo>/.worktrees/<자신>/`).
+1. **즉시 워크트리로 cd** (`<parent>/<자신>/`).
 2. **monitor 대상을 워크트리 경로로 이동** — 기존 main monitor stop, 워크트리 inbox에 새 monitor.
 3. 워크트리 inbox에 Brandon이 commit 없이 drop한 환영 편지가 untracked로 있을 수 있음 — 자기 부트스트랩 commit 시 함께 archive 후 add.
 

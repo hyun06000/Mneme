@@ -30,16 +30,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
     - 연속 N turn 사용자 직접 응답 욕구 발생 (본능 가드 규칙 13 작동).
 
     세션 피로 임계점에서 능동 클락아웃이 룰 위반보다 안전하다. *(이유: 룰 6 위반 직전 자기인식이 약점이 아니라 자기보호.)*
-16. **워크트리는 repo 내부 `<repo>/.worktrees/<이름>/`.** `.gitignore`에 `.worktrees/` 등재. 옛 `<parent>/ClaudeTeam-<이름>/` doctrine 폐기 — 일부 하니스 sandbox는 프로젝트 루트 외부 dir을 turn 사이에 휘발시킨다. `.git/worktrees/` 메타데이터는 `.git/` 안에 살아 있어 OK. Brandon은 in-repo path로 발급, 멤버는 거기서 monitor·commit. *(이유: 외부 dir vanish 사고 후 굳힘. in-repo는 sandbox writable layer 안이라 안전.)*
+16. **워크트리는 루트 repo의 형제 디렉터리 — `<parent>/<이름>/`.** 루트 repo가 `<parent>/<repo>/`에 있을 때 멤버 워크트리는 `<parent>/<멤버이름>/` (예: `<parent>/Brandon/`, `<parent>/Walter/`). **Admin은 자기 이름으로 워크트리를 두지 않는다 — 루트 repo 자체(`<parent>/<repo>/`)를 자기 작업 공간으로 쓴다 (이름 = 레포 이름).** 따라서 Admin은 별도 `member/Admin` 브랜치 불필요(원하면 가능하나 컨벤션 X). `.gitignore`에서 `.worktrees/` 라인 제거 — 더 이상 in-repo 위치 X. Brandon은 `git worktree add ../<멤버이름> -b member/<멤버이름>`로 발급. *(이유: in-repo `<repo>/.worktrees/<X>/` 패턴은 재귀적 문제 — 루트에서 git status·grep·monitor가 자기 안의 워크트리를 다시 훑어 path 오염·중복 inode 처리·룰 17 scan 결과 부풀림. 외부 dir 휘발 우려는 감사 결과 더 작은 비용으로 판명, 루트 형제 위치가 우월. 옛 in-repo doctrine 폐기.)*
 17. **Lighthouse 대기 진입 전 팀 교착 점검 의무.** Lighthouse가 사용자 응답 대기 모드(idle / `say ya` 보고 / 클락아웃)에 들어가기 직전 다음을 일괄 점검:
     - **모든 멤버 inbox 미처리 letter** — `ls ClaudeTeam/*/inbox/*.md` (archive 제외).
-    - **모든 멤버 워크트리 untracked inbox 파일** — `git -C .worktrees/<X> status --short | grep '?? .*inbox/'` (path 불일치 deadlock 신호).
+    - **모든 멤버 워크트리 untracked inbox 파일** — `git -C ../<X> status --short | grep '?? .*inbox/'` (path 불일치 deadlock 신호).
     - **member 브랜치 vs main divergence** — `git log --oneline main..member/<X>` / 역방향. FF 가능 여부.
     - **Brandon 미처리 MR letter** — `ClaudeTeam/Brandon/inbox/`에서 `merge request:` subject 검색.
     - **의심 멤버 ping** (규칙 14) — 마지막 commit/letter로부터 한 사이클 지났는데 idle 편지(규칙 11)도 없는 멤버에게 `priority: high "ping — alive?"`.
 
     교착 신호 발견 시 wait 진입 전에 해소(라우팅·push·재발급) 또는 사용자에게 한 줄 priority:high 보고. *(이유: Lighthouse가 idle로 빠지면 팀 전체 idle 신호로 사용자에게 가는데, 그때 미해소 deadlock이 묻혀 있으면 다음 세션이 같은 교착 위에서 재시작. 시행착오로 굳힘 — path 불일치·워크트리 untracked drop 사고가 직접 학습.)*
-18. **모든 letter는 commit + push로 land. Untracked drop 금지.** 발신자가 race 회피·"가벼운 신호" 의도로 letter를 commit 없이 main path에 drop하면 → 수신자 워크트리 monitor(`<repo>/.worktrees/<X>/ClaudeTeam/<X>/inbox/`, 다른 inode)는 못 catch → path 불일치 deadlock. 정정:
+18. **모든 letter는 commit + push로 land. Untracked drop 금지.** 발신자가 race 회피·"가벼운 신호" 의도로 letter를 commit 없이 main path에 drop하면 → 수신자 워크트리 monitor(`<parent>/<X>/ClaudeTeam/<X>/inbox/`, 다른 inode)는 못 catch → path 불일치 deadlock. 정정:
     - **letter는 항상 commit + push.** main에 commit 1개 추가 = 작은 비용, monitor catch 보장 = 압도적 가치.
     - **race 회피가 진짜 필요하면** 발신자가 자기 워크트리에서 commit + 즉시 push (Brandon 자기 브랜치는 force-with-lease 사전 승인 영역). main commit이 부담스러우면 Lighthouse inbox에 한 줄 알림 동시 발송으로 routing 풀기 (ONBOARDING §1.6 패턴).
     - **Bypass된 MR validation 결과 stale 처리**: Lighthouse가 Brandon 우회로 MR을 직접 merge한 경우, Brandon 측 validation letter(PASS/FAIL)가 자동 stale화 — Lighthouse가 land 직후 "Brandon 측 letter 무효, Step N 이미 land" 짧은 letter로 발신·수신 양측 정정. 그렇지 않으면 양측이 서로 다른 세계 모델로 idle.
@@ -77,8 +77,9 @@ ClaudeTeam/
     ├── inbox/      (Monitor로 관찰)
     └── Memo/       (장기 기억)
 
-<repo>/.worktrees/      (gitignore — 멤버별 워크트리, Brandon이 발급)
-└── <팀원이름>/         (member/<이름> 브랜치 체크아웃)
+<parent>/                (루트 repo와 형제 워크트리, Brandon이 발급)
+├── <repo>/             (Admin 작업 공간 = 루트 repo, 이름 = 레포 이름)
+└── <멤버이름>/         (각 멤버 워크트리, member/<이름> 브랜치 체크아웃)
 ```
 
 ### 현재 멤버
