@@ -11,16 +11,17 @@
 
 ## open (미해결)
 
-- 워크트리 미발급. Brandon에게 `member/Walter` 워크트리 요청 letter를 보내야 한다 (Stoa 우선, fallback inbox).
-- RFC-001 초안 미작성. 사용자 GO는 받았으나 Admin과 outline 합의 후 시작이 안전.
-- argon2id가 AIL builtin인지 확인 필요. 없으면 룰 20.1로 upstream issue (Brandon `gh` CLI). 현재 AIL crypto는 ed25519만 (project_plan 노트).
+- ✅ 워크트리 발급됨 — `member/Walter @ 77b7a60` (Brandon 2026-05-06). 워크트리 cd·monitor 이동 완료.
+- ✅ RFC-001 outline 발사 완료 (Stoa msg #19, 13 섹션 골격 + 결정 11건 매핑). Admin GO 대기.
+- argon2id AIL builtin 확인은 RFC §11.1로 land — outline GO 후 본문 작성 시 Cross-repo workflow로 발사. 본문 draft는 너가 작성, Brandon이 `gh issue create`.
+- §9 design-questions 4건 사용자 콜 대기 — RFC 본문에서 \"open\"으로 박고 Admin이 routing.
 
 ## 다음 세션 첫 행동
 
-1. CLAUDE.md → ONBOARDING.md → Identity.md → Bonds.md → 이 파일 → Memo/last_session_report.md (있으면).
-2. Stoa 폴링 모니터 재가동 (`Mneme-Walter`).
+1. CLAUDE.md → ONBOARDING.md → Identity.md → Bonds.md → 이 파일 → Memo/last_session_report.md.
+2. Stoa monitor 재가동 (v3 파일-state 패턴 — last_session_report 시행착오 노트 그대로). path: `.worktrees/Walter/ClaudeTeam/Walter/inbox/`.
 3. inbox 처리.
-4. RFC-001 진척 확인. 멈춰 있으면 Admin에게 outline 한 페이지 letter.
+4. Stoa 마지막 letter 확인 → outline GO 와 있으면 RFC 본문 진입. 없으면 룰 11 idle letter 후 대기.
 
 ## 잊지 말 것
 

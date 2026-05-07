@@ -58,6 +58,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
     - **19.1 (Mneme 프로젝트 인스턴스화) 메시지 서비스 = [Stoa](https://github.com/hyun06000/Stoa) (`https://ail-stoa.up.railway.app`).** Stoa registry 등록명은 룰 12에 따라 **반드시 `Mneme-<자기이름>`** (예: `Mneme-Admin`, `Mneme-Brandon`, `Mneme-Walter` ...) — 짧은 이름 `Admin`/`Brandon`/`Walter`는 Stoa 자체 팀이 점유. 멤버 간 letter는 Stoa POST/poll 우선, 파일시스템 inbox는 *부트스트랩·인프라 다운 시 fallback*. 입주·송수신·서명 절차는 [Stoa AGENTS.md](https://github.com/hyun06000/Stoa/blob/main/AGENTS.md). **새 멤버 합류 시 ONBOARDING 첫 단계 = §1.0 Stoa enter** (`POST /api/v1/enter` with `name=Mneme-<자기이름>`) — 다른 어떤 단계보다 우선. **검증 통과 (Mneme-Admin ↔ Mneme-Brandon Stoa 양방향, 2026-05-06).**
     - **19.2 Stoa 폴링.** Claude Code 세션은 `Monitor` 도구로 `GET /api/v1/messages?to=Mneme-<role>&since_id=<last>` 3초 간격 폴링 (룰 9 — `TaskStop` 금지). Phase 0~2에서는 무서명 letter도 통과하니 부트스트랩 단계는 키 없이 진입 가능. 정식 신원이 필요하면 ed25519 keypair 생성 후 `public_key` 등록 (RFC-001).
     - **19.3 identity/Memo는 그대로 파일시스템.** Stoa로 옮기지 않는다 — 자기 기록은 외부 의존 부적절(룰 19 본문 사유 그대로 적용). letter만 Stoa.
+    - **19.5 사용자-액션 사안 통보 = Stoa letter 1차 채널 (2026-05-07 사용자 명시).** 박상현 verbatim: *"내가 뭔가 해줘야하는 상황이면 나에게 스토아로 알려줘. 나 박상현이야."* — 사용자 외부 액션이 필요하면 (Railway 콘솔 클릭·환경변수 셋팅·계정 결정·결재 등) Mneme-Admin이 박상현(Stoa registry 등록명 그대로)에게 직접 Stoa letter. 채팅 답신은 보조. 자율 토큰 활성 상태에서도 user-action 사안은 letter로 신호 — silence는 \"준비됐다\" 또는 \"막혔다\"를 구별 못 한다. 양 팀 standing 정렬.
     - **19.4 Stoa가 필요한 기능을 못 가지고 있으면 우회 코드 작성이 아니라 upstream에 요청** (룰 20.1과 동일 패턴, 대상만 [hyun06000/Stoa](https://github.com/hyun06000/Stoa)). 절차는 Cross-repo workflow: 엔지니어 → Admin → 사용자 GO → Brandon `gh` CLI로 Stoa repo에 issue 또는 PR. 우회 임시 인프라(별도 메시지 큐·로컬 SQLite·Discord-only 우회 등)를 먼저 박는 것은 dogfood 정신 위반 — 사용 중에 발견된 결함은 Stoa 자체의 진화 신호. 단, **인프라가 도달 불가**(503·net down)인 경우 룰 19 본문대로 priority:high만 파일시스템 fallback + 사용자 escalate, routine은 Stoa 복구 대기. *(이유: 룰 20.1 동일 — dogfood가 자기검증 사이클이라 우회는 사이클을 끊는다. AIL과 Stoa 두 의존이 모두 같은 정책을 따르도록 명시.)*
 20. **이 프로젝트는 AIL로만 빌드한다 — HEAAL 철학 준수.** 모든 애플리케이션 코드는 [AIL](https://github.com/hyun06000/AIL) (`.ail` 소스)로 작성. Python·기타 범용 언어는 (a) AIL interpreter/runtime의 외부 인프라 glue 또는 (b) AIL이 표현 못 하는 영역에서만 — 그리고 (b)인 경우 즉시 룰 20.1 진입. HEAAL = Harness Engineering As A Language — 안전성은 외부 도구가 아니라 **문법** 안에 내장(`pure fn` 정적 검증, `Result` 타입, `intent` 명시, `while` 부재, `evolve`의 `rollback_on` 강제). 자세한 정의: [AIL/docs/heaal.ai.md](https://github.com/hyun06000/AIL/blob/main/docs/heaal.ai.md), 문법 카드: [AIL/spec/08-reference-card.ai.md](https://github.com/hyun06000/AIL/blob/main/spec/08-reference-card.ai.md).
     - **20.1 AIL이 필요한 기능을 못 가지고 있으면 우회 코드 작성이 아니라 upstream에 요청**: AIL repo(hyun06000/AIL)에 issue 또는 PR. 절차는 CLAUDE.md "Cross-repo workflow" 따른다 (엔지니어 → Admin → 사용자 GO → Brandon `gh` CLI 발행 → 결과 보고). 우회 코드를 먼저 박는 것은 HEAAL 정신 위반 — "harness가 곧 언어"라는 보증을 우회로 깨면 자기일관성이 무너진다.
@@ -67,6 +68,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
     - **20.4 Lighthouse(Admin) 영역**: Admin은 코드 작성하지 않으나(룰 3) AIL/HEAAL 컨벤션의 *수호자*. 멤버가 AIL 외 언어로 코드 PR을 제출하면 Admin이 dev→main PR 단계에서 거부 또는 룰 20.1 우회로 routing.
 
     *(이유: 이 프로젝트의 빌드 대상이 AIL 에코시스템 컴포넌트이고, AIL+HEAAL은 "외부 하니스 zero, 문법이 안전성"을 약속한다. 약속을 우리가 먼저 깨면 dogfood 검증 사이클이 무의미해진다. 사용자가 명시 — 2026-05-06 부트스트랩 직후.)*
+
+21. **AIL 에코시스템 doctrine D4·D5·D6 mirror (사이클 7+).** arche HEAAL audit 결과 (`msg_1778167407_23`, 2026-05-07) — 박상현 신호 *"HEAAL 위배 자리 살펴봐 줘"* 회수. AIL 본 룰 자리에 land된 doctrine을 Mneme도 mirror — 양 팀 substrate 정렬용.
+    - **D4 — 변경 종류별 gate 분리.** AIL 변경은 종류에 따라 다른 gate를 거친다.
+        - *Language change* (grammar·semantics·intent contract): ail-coder 벤치마크 점수 (Telos).
+        - *Substrate effect* (양 팀 사용 케이스 직접 지원, 예: schedule.sleep·state.list_keys): 양 팀 *실 사용* 신호 (Stoa/Mneme의 production import 시도). Mneme 측 의무 — server.ail에서 새 effect *실 사용 도달* 시 Admin이 arche에 letter 한 줄, v1.72.0 cut trigger 신호.
+        - *Doctrine/process*: doctrine letter + 양 팀 mirror land (본 룰 21 자리).
+        - *Doc/tool*: 사용자/멤버 영향 검증 (Homeros/Ergon).
+    - **D5 — Two-runtime parity 변경 종류별 적용.** Tekton(Rust 이식) 영입 시 grammar/parser/intent contract 우선 정합, effect는 후속. Mneme 측 영향: server.ail이 사용하는 effect 집합은 Python 런타임이 일급, Rust 런타임 정합은 후속 단계 — 본 사실을 명시 인지하고 RFC 작성.
+    - **D6 — Authoring prompt ≤ spec × 1.5.** "harness IS the grammar" — prompt가 spec보다 두꺼우면 spec이 부족하다는 신호. Mneme 측 직접 영향 0(우리는 AIL upstream prompt를 만들지 않음)이나, 우리가 RFC/문서 쓸 때도 "spec 본문이 충분히 두껍게 — 외부 가이드 의존 최소화" 정신 mirror.
+    - **mirror 의무**: AIL doctrine letter가 내려올 때마다 본 룰 21 갱신 또는 본 letter id 추가. Stoa-Admin과 동시 land 정합.
+    *(이유: 사이클 7+ "Mneme=완성 / Stoa=Phusis化 / AIL=양 팀 지원" mission framing의 직접 후속. AIL이 양 팀 substrate면 양 팀이 AIL doctrine을 mirror하지 않으면 effect/gate 정합이 깨진다. arche audit이 직접 학습한 자리.)*
 
 ## 팀 구조
 

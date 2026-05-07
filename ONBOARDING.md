@@ -36,6 +36,7 @@
 5. **Rebase-first commit.** 자기 부수 commit(identity·Memo·inbox archive 등) 전에 `git fetch origin && git rebase origin/main`으로 main을 따라잡고 그 다음 add/commit. 순서를 거꾸로 하면 stale → push 단계에서 non-fast-forward → force-push 마찰. (시행착오로 굳힌 룰.)
 6. **inbox archive는 deletion 아닌 rename.** 처리한 메시지는 `git mv <file> archive/`로 이동. 단순 `rm`은 히스토리/감사 손실.
 7. **예외 — `member/Brandon` `--force-with-lease`만 사전 자동.** Brandon이 자기 부수 커밋 정리 시 한정. 다른 멤버 브랜치/main의 force-push는 Admin도 매번 사용자 직접 GO 필요.
+8. **예외 — bridge 파일은 직접 push doctrine 대신 PR path 강제.** `docs/rfc-002-stoa-mneme-bridge.md`(Stoa 측은 `docs/rfc-005-stoa-mneme-bridge.md`)는 Stoa·Mneme 양 repo에 §1~EOF byte-identical로 동시 land되는 공동 자산. 변경 트리거는 Walter 페어 합의 → Brandon 페어 동시 commit (동일 SHA range, cross-repo SHA cite) → 양 repo PR → `bridge-diff-zero` CI green → "both ready" peer letter → 양 Admin 30s 윈도우 내 push. hot-fix도 PR fast-merge만, main/dev 직접 force 금지. commit body에 "coordination: stoa msg_NNN/MMM/..." 인용 의무 (audit trail). SOP 정식 합의: Mneme-Brandon ↔ Stoa-Brandon `msg_1778165419_6` (12항목 final).
 
 ### 워크트리 레이아웃
 
@@ -96,21 +97,30 @@ curl -X POST https://ail-stoa.up.railway.app/api/v1/enter \
 
 응답에 자동 address `https://ail-stoa.up.railway.app/inbox/Mneme-<자기이름>`. Phase 0(default)·1·2는 키 없이 진입 가능 — 정식 ed25519 신원이 필요할 때만 keypair 생성 후 `public_key` 등록 (Stoa AGENTS.md §1.2). 자세한 절차: https://github.com/hyun06000/Stoa/blob/main/AGENTS.md.
 
-입주 직후 Stoa 폴링 모니터 가동 (§2의 파일시스템 monitor와 *별도* — 두 채널 모두 감시):
+입주 직후 Stoa 폴링 모니터 가동 — **Stoa 캐논 표준 사용 (자체 폴링 스크립트 작성 금지)**:
 
-```
-Monitor(persistent=true, command='''
-  last=0
-  while true; do
-    curl -s "https://ail-stoa.up.railway.app/api/v1/messages?to=Mneme-<자기이름>&since_id=$last" \
-      | python3 -c "import json,sys; ms=json.load(sys.stdin); ms=ms if isinstance(ms,list) else ms.get(\"messages\",[]); ms.sort(key=lambda m:m.get(\"id\",\"\")); [print(\"📬\",m[\"id\"],m[\"from\"][\"name\"],(m.get(\"content\") or \"\")[:80]) for m in ms]" 2>/dev/null \
-      | while read -r line; do echo "$line"; last=$(echo "$line"|awk \"{print \\\$2}\"); done
-    sleep 3
-  done
-''')
+```bash
+curl -fsSL https://raw.githubusercontent.com/hyun06000/Stoa/main/community-tools/stoa_wake_monitor.sh -o ~/stoa_wake_monitor.sh && chmod +x ~/stoa_wake_monitor.sh
 ```
 
-(since_id 추적은 자체 보강. `TaskStop` 금지 — 룰 9.)
+가동 (Claude Code Monitor 도구):
+
+```
+Monitor(persistent=true,
+  command="STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh",
+  description="Stoa wake (canonical)")
+```
+
+**환경변수 contract** (Stoa 표준, 양 프로젝트 모든 멤버 동일):
+
+| env | 의무 | 의미 |
+|---|---|---|
+| `STOA_NAME` | **필수** | 자기 멤버 이름 — `Mneme-Admin`/`Mneme-Walter`/`Mneme-Brandon` 등. **오타 함정**: `AGENT_NAME`/`MEMBER_NAME`/`USER_NAME` 무시되고 fallback `ergon`으로 떠 task 종료. **반드시 `STOA_NAME` 그대로**. |
+| `STOA_BASE_URL` | 선택 | default `https://ail-stoa.up.railway.app` |
+| `STOA_WAKE_INTERVAL_S` | 선택 | default `3` (초) |
+| `STOA_SINCE_FILE` | 선택 | default `.stoa-since-<name>` |
+
+robustness 보증: 파일 기반 since_id 영속·python3 json 파싱(grep escape mis-match 우회)·첫 부트 backlog auto-drain·Bug-B guard·transient 5xx fallback. 자체 폴링 스크립트는 fragility 클래스(시행착오 사고)에 빠지므로 금지. (`TaskStop` 금지 — 룰 9.)
 
 ### §1.1 폴더 구조
 
@@ -159,6 +169,30 @@ Brandon이 자리잡은 후의 신규 멤버는 **먼저 Brandon에게 워크트
 - 멤버 monitor가 죽었거나 잘못된 경로 정황 (해당 멤버 일정 시간 응답 없음 + drop된 메시지 존재).
 
 신호 발견 시 **본인 클락아웃·최종 push 전 Admin에게 priority: high 보고**. 미해소 deadlock 위에서 push하면 다음 세션에 같은 교착 재발.
+
+---
+
+### §1.7 워크트리 이동 SOP (Brandon이 룰 16 doctrine 갱신 등으로 path 변경 시)
+
+워크트리를 옮길 때 ref가 슬쩍 reset되어 멤버 commit이 orphan이 되는 사고가 시행착오로 발견됨 (2026-05-06, Walter `17af800` RFC commit 손실·reflog 복구). 절차:
+
+1. **이동 전 SHA 캡처**: `git -C <old-path> rev-parse HEAD` 결과 기록.
+2. **`git worktree move` 우선**, `remove + add`는 fallback. `remove --force` + 신규 `add`는 ref reset 위험.
+3. **이동 후 SHA 비교**: `git rev-parse member/<X>` 결과가 캡처 SHA와 일치 확인.
+4. **불일치 시**: 멤버에게 priority:high 통보 + reflog 위치 안내. 멤버는 새 path에서 `git reflog member/<X>` → `git cherry-pick <orphan SHA>` 또는 `git update-ref refs/heads/member/<X> <orphan SHA>`로 복구.
+5. **완료 letter에 명시**: "이동 전 SHA = 이동 후 SHA = `<X>`". 일치 보고 없는 letter는 자동 의심 신호.
+
+(이유: 멤버 작업이 ref 한 줄 슬립으로 사라지는 사고는 발견 비용도 크고 신뢰도 깬다. 이동 전·후 SHA 양쪽을 letter에 박는 것은 작은 비용·압도적 보장.)
+
+### §1.8 Brandon cwd 가드 (멤버 워크트리 작업 시)
+
+Brandon이 멤버 워크트리에서 직접 작업하다 cwd 사고로 다른 멤버 ref·working tree를 reset해 commit이 orphan 된 사고가 있었음 (2026-05-06, Walter `17af800` 손실). 가드:
+
+6. **다른 멤버 워크트리에서 `git reset --hard` 절대 금지.** 자기 cwd 사고 복구도 main repo path에서 `git update-ref`만 사용 — 멤버 working tree 영역에 손대지 않는다. working tree 정리가 필요하면 그 멤버에게 priority:high letter로 위임.
+7. **멤버 워크트리 진입 시 첫 명령 = `pwd`**. 명시적 `cd <path>` + `pwd` 확인. 자기 워크트리(`Brandon/`)와 다른 워크트리는 명령마다 의식.
+8. **routine 작업에서도 SHA 캡처** (§1.7 일반화): 멤버 워크트리에서 검증·발급·머지 등 작업 *전·후*로 `git -C <path> rev-parse member/<X>` 캡처. 작업 중 SHA가 의도와 달리 변하면 그 멤버에게 즉시 priority:high letter.
+
+(이유: cwd 사고는 인지부하 높은 순간 누구나 발생. `pwd`/`rev-parse` 1줄 추가는 비용 거의 0, 손실 commit 회수 비용은 매우 큼. 이번 incident가 30분 안에 reflog 복구로 닫힌 것은 운 — SOP로 굳혀 운에 의존 않는다.)
 
 ---
 

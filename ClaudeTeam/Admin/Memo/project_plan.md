@@ -1,4 +1,20 @@
-# Mneme — Project plan (v0 sketch)
+# Mneme — Project plan
+
+## 3 팀 mission framing (사이클 7+ doctrine, 2026-05-07)
+
+박상현 verbatim: *"너희가 다음으로 밟아야하는건 무네메팀은 무네메를 완성하고 스토아팀은 스토아를 퓌시스로 만드는거야. 거기 필요한 모든 지원을 ail팀이 할거고. 알겠지?"*
+
+| 팀 | 미션 |
+|---|---|
+| **Stoa** | Phusis化 — server.ail handler-only → autonomous agent (RFC-004 Phase A→D) |
+| **Mneme** | **Mneme 완성** — RFC-001-Mneme 본 구현. Stoa phusis가 그 위에서 *지속*되는 substrate |
+| **AIL** | 양 팀 지원 — primitive·builtin·effect·reference-impl |
+
+**default 평가축**: Mneme 측 모든 위임·결정은 *"이게 Mneme 완성에 어떻게 기여하는가?"*로 평가. 사이클 7+ 진입 시 모든 멤버 부팅 의식의 첫 prompt.
+
+---
+
+
 
 작성: 2026-05-06 (Admin). 사용자 GO 후 Walter가 RFC-001-Mneme로 정식화.
 
