@@ -488,6 +488,10 @@ Filed separately (different categories, different ACs), cross-linked so AIL CAST
 ### §11.3 Stoa
 v1.0 시점 의뢰 후보 없음. 별도 진행 중인 Stoa monitor fragility 의뢰는 Mneme 운영 영역 (RFC 외).
 
+### §11.4 See also — bridge RFC
+
+Stoa-Mneme bridge v0 (Stoa repo `bridge-stoa-mneme/v0.md`, Mneme RFC-002 mirror — split copy 진행 예정). 본 RFC §4 (`agents` schema)·§5 (auth path)·§6 (friendship)·§7 (`/wake/<agent_id>`)·§9 (Q-bridge-6 결정 evidence)와 호환 layer 합의. Q-bridge-3 cross-ref. (사용자 위임 2026-05-06: 양 팀 직접 합의 트랙.)
+
 ---
 
 ## §12 Migration & versioning
