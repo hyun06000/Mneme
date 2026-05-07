@@ -84,13 +84,15 @@ Mneme는 AIL 에코시스템의 L1 컴포넌트다 — *self ↔ future-self* �
 ```sql
 CREATE TABLE agents (
   agent_id    TEXT PRIMARY KEY,
-  pwd_hash    TEXT NOT NULL,            -- argon2id (§5)
+  pwd_hash    TEXT,                     -- argon2id (§5), NULLable v1.1+ — Stoa-self 같은 ed25519 only 케이스
   public_key  TEXT,                     -- ed25519 public, optional (§5)
-  registered_at TEXT NOT NULL
+  registered_at TEXT NOT NULL,
+  CHECK (pwd_hash IS NOT NULL OR public_key IS NOT NULL)
 ) WITHOUT ROWID;
 ```
 - 등록은 1회. 재등록 4xx (§7).
 - pwd 변경은 v1.0 비지원 (RFC-002 후보, NG2 인접).
+- v1.1+ `pwd_hash` NULLable. CHECK 제약으로 *둘 중 하나*는 의무 — `agents` row는 항상 인증 가능 (§9 Q4 OR enforcement).
 
 ### `identity_versions`
 ```sql
@@ -172,10 +174,16 @@ CREATE INDEX idx_memo_latest ON memo_versions(agent_id, slug, version DESC);
 ## §5 Authentication
 
 ### Wire format
-모든 인증 요구 endpoint는 **HTTP Basic** per-request (§9 Q1는 본문 open).
+인증 요구 endpoint는 **HTTP Basic** per-request (§9 Q1 Decision: Basic 단일, 사용자 GO 2026-05-07).
 
 ```
 Authorization: Basic base64("<agent_id>:<password>")
+```
+
+ed25519 path (사용자가 등록 시 `public_key` 제공):
+
+```
+Authorization: Signature keyId="<agent_id>",signature="<base64-ed25519-sig>"
 ```
 
 AIL `base64_decode` (v1.50+) 보유 확인됨. Authorization header parsing helper 부재 시 §11에 의뢰 후보.
@@ -186,8 +194,17 @@ AIL `base64_decode` (v1.50+) 보유 확인됨. Authorization header parsing help
 - 우회 직접 구현 **금지** (룰 20.1, HEAAL 위반). builtin land까지 M2 시작 차단 — Marcus 작업은 의뢰 결과 land 후.
 
 ### ed25519 (옵션)
-- register/auth 1차 경로는 password.
-- ed25519 public_key는 신원 식별·서명 검증용 옵션 (룰 19.1 정합성). RFC v1.0에서는 등록만 정의, **인증 결합은 §9 Q4 open**.
+- register/auth 1차 경로는 password (사람 운영자).
+- ed25519 path는 자동화 클라이언트(예: Stoa-self) 1차 — `public_key` 등록 + 매 mutation `Signature` header.
+- v1.1+ `agents.pwd_hash NULLable` + CHECK 제약 (§4) — 둘 중 *하나*는 의무. §9 Q4 Decision: OR.
+
+### Auth path 매트릭스
+
+| 사용자 클래스 | `pwd_hash` | `public_key` | 인증 wire |
+|---|---|---|---|
+| 사람 운영자 | NOT NULL | NULL | HTTP Basic |
+| 자동화 클라이언트 (Stoa-self 등) | NULL | NOT NULL | `Signature` ed25519 |
+| 둘 다 (선택) | NOT NULL | NOT NULL | 클라이언트 선택 (Basic 또는 Signature) |
 
 ### 복구
 - 정책 = 없음 (결정 #7). pwd 분실 시 새 agent_id로 재등록 외 방법 없음. Vault 영구 접근 불가.
@@ -333,24 +350,23 @@ codes: `BAD_REQUEST` `UNAUTHORIZED` `FORBIDDEN` `NOT_FOUND` `CONFLICT` `PAYLOAD_
 본문 작성 중 사용자 콜이 들어오면 본 섹션을 결정으로 변환 + 영향 섹션(§5/§6/§7) 보강.
 
 ### Q1 — Auth mode
-**현재 안**: per-request Basic auth (서버 stateless, dogfood 단순).
-**대안**: `POST /api/v1/auth` → session token, 후속 Bearer.
-**Walter 추천**: Basic 단일화. **사용자 콜 필요? Yes.**
+**Decision: per-request HTTP Basic auth.** (사용자 GO 2026-05-07.)
+**근거**: 서버 stateless, dogfood 단순. session 모델은 RFC-002+ 후보. 영향: §5 Wire format / §7 endpoint 인증 요구 모두 Basic 그대로.
 
 ### Q2 — `recent_bonds` 기본값
-**현재 안**: `N=20`.
-**대안**: 50, 100, 또는 사용자 정의 max=200.
-**사용자 콜 필요? Yes (운영 감각).**
+**Decision: N=20** (사용자 GO 2026-05-07). `?limit=N` override 허용 (max 200).
+**영향**: §7 `GET /bonds/<agent_id>` + `GET /wake/<agent_id>` recent_bonds 기본 20.
 
 ### Q3 — Stoa-style nonce/signature 의무화
-**현재 안**: TLS만 의무, nonce/signature는 ed25519 옵션 등록 시 별도 정책.
-**대안**: Phase 3부터 모든 mutation에 ed25519 signature 강제.
-**사용자 콜 필요? Yes (보안 경도 vs 운영 마찰).**
+**Decision: TLS only v1.0** (사용자 GO 2026-05-07). nonce·signature 의무화는 v2 후보.
+**근거**: replay 위험 evidence 부재 시 운영 마찰만 ↑. evidence 발견 시 별 issue.
 
 ### Q4 — Password ↔ ed25519 결합
-**현재 안**: OR (둘 중 하나 — pwd 또는 signed nonce).
-**대안**: AND (둘 다 의무).
-**Walter 추천**: OR (편의). **사용자 콜 필요? Yes.**
+**Decision: OR** (둘 중 하나) (사용자 GO 2026-05-07).
+**근거**: 사람 운영자 = password, 자동화 클라이언트 = ed25519 (Stoa-self 페어링 evidence). AND 강제는 양 클래스 모두 운영 복잡도↑ 보안 이득↓. Schema-level enforcement: §4 `agents` CHECK 제약.
+
+### Q-bridge-6 — agents schema 변경 (bridge v0 도출)
+**Decision: 채택** (사용자 GO 2026-05-07). v1.1 patch — `agents.pwd_hash NULLable` + `CHECK (pwd_hash IS NOT NULL OR public_key IS NOT NULL)`. 본 §9 Q4 OR을 schema-level enforcement.
 
 ---
 
@@ -476,10 +492,18 @@ v1.0 시점 의뢰 후보 없음. 별도 진행 중인 Stoa monitor fragility �
 
 ## §12 Migration & versioning
 
-- v1.0 schema는 frozen.
+- v1.0 schema는 frozen. 본 §12에서 정의한 *backward-compatible* 변경만 v1.x로 release (예: v1.1).
 - 변경은 `_v2` 테이블 + view 또는 새 RFC.
 - Column 추가는 `NULLable`만 (INSERT-only 원칙 보존).
+- **NOT NULL → NULLable 완화도 backward-compatible** — 기존 row는 영향 없음, 새 row만 NULL 허용. v1.0 → v1.1 `agents.pwd_hash` 변경이 본 패턴.
+- 새 CHECK 제약 추가는 *기존 row가 위반하지 않을 때*만 backward-compatible. v1.1 `CHECK (pwd_hash IS NOT NULL OR public_key IS NOT NULL)`은 v1.0 모든 row가 `pwd_hash NOT NULL`이라 자동 통과.
 - Endpoint 변경은 `/api/v2/...` 별도 prefix. v1는 deprecation period 후 제거.
+
+### v1.1 변경 요약
+- §4 `agents.pwd_hash` NULLable + CHECK 제약 (Q-bridge-6 사용자 GO 2026-05-07).
+- §5 `Authorization: Signature` ed25519 path 명시 + auth path 매트릭스.
+- §9 Q1~Q4 + Q-bridge-6 모두 Decision 박힘.
+- §11.1 argon2id 의뢰 본문 통합 (Marcus draft + Walter harmonize + Stoa-Walter cross-review).
 
 ---
 
