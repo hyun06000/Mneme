@@ -421,7 +421,7 @@ Semantics:
 - `crypto_hash_password` — argon2id default (m=64MiB, t=3, p=1 → tunable later). Salt generated internally via the same CSPRNG that backs `crypto_random_bytes`. Returns standard PHC string format (`$argon2id$v=19$m=...,t=...,p=...$<salt>$<hash>`), self-describing so `crypto_verify_password` recovers all parameters. Returns `Err` only on host-side failure (libargon2 missing, OOM under memory budget).
 - `crypto_verify_password` — parses PHC string, runs argon2id with stored params, constant-time compares. Returns `Boolean` (no `Result`): malformed hash returns `false` rather than `Err`, matching how downstream code naturally branches on auth.
 - Host implementation: `argon2-cffi` is the standard Python binding (often a transitive dep of `cryptography`). `passlib`'s pure-Python argon2 fallback works but is slower.
-- Constant-time compare is the host's responsibility; verifiers must not be expressible as `==` in user-facing AIL.
+- Constant-time compare is the host's responsibility; verifiers must not be expressible as `==` in user-facing AIL — otherwise downstream code will accidentally write timing-vulnerable comparisons (the canonical bug class for password verifiers).
 
 PHC-string output keeps version negotiation host-internal: future tunings of `(m, t, p)` ship without changing the AIL signature.
 
@@ -439,7 +439,7 @@ argon2id is the OWASP and PHC-competition winner for new code (2015+); covers bo
 
 - Both builtins land with PHC-string round-trip.
 - `spec/08-reference-card.ai.md` lists them under the existing `crypto` block.
-- A 4-line `examples/` round-trip (`crypto_hash_password` → `crypto_verify_password` → `true`).
+- A 4-line `examples/argon2id-roundtrip.ai` round-trip (`crypto_hash_password` → `crypto_verify_password` → `true`).
 - `CHANGELOG.md` records the version (Mneme will pin against it).
 
 ### Alternatives considered
