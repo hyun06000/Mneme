@@ -36,6 +36,7 @@
 5. **Rebase-first commit.** 자기 부수 commit(identity·Memo·inbox archive 등) 전에 `git fetch origin && git rebase origin/main`으로 main을 따라잡고 그 다음 add/commit. 순서를 거꾸로 하면 stale → push 단계에서 non-fast-forward → force-push 마찰. (시행착오로 굳힌 룰.)
 6. **inbox archive는 deletion 아닌 rename.** 처리한 메시지는 `git mv <file> archive/`로 이동. 단순 `rm`은 히스토리/감사 손실.
 7. **예외 — `member/Brandon` `--force-with-lease`만 사전 자동.** Brandon이 자기 부수 커밋 정리 시 한정. 다른 멤버 브랜치/main의 force-push는 Admin도 매번 사용자 직접 GO 필요.
+8. **예외 — bridge 파일은 직접 push doctrine 대신 PR path 강제.** `docs/rfc-002-stoa-mneme-bridge.md`(Stoa 측은 `docs/rfc-005-stoa-mneme-bridge.md`)는 Stoa·Mneme 양 repo에 §1~EOF byte-identical로 동시 land되는 공동 자산. 변경 트리거는 Walter 페어 합의 → Brandon 페어 동시 commit (동일 SHA range, cross-repo SHA cite) → 양 repo PR → `bridge-diff-zero` CI green → "both ready" peer letter → 양 Admin 30s 윈도우 내 push. hot-fix도 PR fast-merge만, main/dev 직접 force 금지. commit body에 "coordination: stoa msg_NNN/MMM/..." 인용 의무 (audit trail). SOP 정식 합의: Mneme-Brandon ↔ Stoa-Brandon `msg_1778165419_6` (12항목 final).
 
 ### 워크트리 레이아웃
 

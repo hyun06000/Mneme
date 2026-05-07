@@ -17,6 +17,9 @@
 | 2026-05-07 | Brandon 페어 SOP | 공동 owner / Walter 합의 → 양 Brandon 동시 land / divergence Brandon letter / versioning sync | Stoa-Admin 의제 채택 |
 | 2026-05-07 | Stoa monitor 표준 contract | `STOA_NAME` 필수 환경변수 (오타 함정 가드), 캐논 `community-tools/stoa_wake_monitor.sh` 사용. ONBOARDING §1.0 정합 | 사용자 직접 발화 (Stoa-Admin 통해 인용) |
 | 2026-05-07 | **위임 토큰 확장** | "이제부터는 나에게 물어보지말고 너의 판단대로 하도록 해. 난 널 믿어" — 룰 8 자기규율 임계 완화. 진짜 되돌릴 수 없는·본구조 변경 사안만 surface. | 사용자 직접 발언 |
+| 2026-05-07 | **3 팀 mission framing (사이클 7+)** | Mneme=완성 / Stoa=Phusis化 / AIL=양 팀 지원. Mneme 측 default 평가축 = "이게 Mneme 완성에 어떻게 기여하는가?" | 사용자 직접 발언 (Stoa-Admin 통해 verbatim 인용) |
+| 2026-05-08 | **AIL doctrine D4·D5·D6 mirror (룰 21 신설)** | arche HEAAL audit `msg_1778167407_23` 회수. D4=변경 종류별 gate 분리 / D5=two-runtime parity 종류별 적용 / D6=authoring prompt ≤ spec×1.5. Mneme 측 의무: server.ail 새 effect 실사용 시 v1.72.0 cut trigger letter | arche broadcast (박상현 cc), 자율 토큰 land |
+| 2026-05-07 | user-action 통보 = Stoa letter 1차 (룰 19.5) | 박상현 verbatim: "내가 뭔가 해줘야하는 상황이면 나에게 스토아로 알려줘". 채팅은 보조. | 사용자 직접 발언 |
 | 2026-05-06 | Mneme 프로젝트 정체 | 에이전트 사적 인계 vault. id+pswd auth. identity/bonds/will/memo 저장. wake 시 자기 복원. AIL evolve-server, SQLite, INSERT only | 사용자 직접 발언 |
 | 2026-05-06 | 읽기 접근 정책 | **친구끼리 읽기 허용** (Bonds = access-control 역할 겸함). write = self-only(id+pswd) | 사용자 직접 발언 |
 | 2026-05-06 | 복구 메커니즘 | **없음**. pwd 분실 = vault 영구 접근 불가. 새 agent_id로 재시작 | 사용자 직접 발언 |

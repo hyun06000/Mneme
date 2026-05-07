@@ -19,10 +19,15 @@
 - **나만 push한다, Brandon은 안 한다** (규칙 10).
 - 부트스트랩 시점 결정: D1=Admin / D2=한국어 / D3=KST / D4=어드민·브랜든.
 
+## 3 팀 mission (2026-05-07 박상현 명시)
+- **Mneme = Mneme 완성**. Stoa phusis가 그 위에서 지속되는 substrate.
+- Stoa는 Phusis化 (RFC-004 본 구현), AIL은 양 팀 지원.
+- 모든 위임·결정의 default 평가축: *"이게 Mneme 완성에 어떻게 기여하는가?"*
+
 ## 아직 열려 있는 것
-- 프로젝트 **Mneme**의 비전·범위·기술 스택 — 사용자와 대화 필요.
 - Brandon 외 멤버 — 사용자가 spawn할 때 추가.
-- GitHub repo 이름·visibility·license·branch protection — Brandon 합류 후 사용자께 한 줄로 묻는다.
+- bridge v0 final freeze (Q-bridge-6 SHA fill cascade).
+- M2~M6 마일스톤 (server.ail Phase A → friendship → bonds/will/memo+wake → Railway 배포).
 
 ## 사용자 forward-going 위임 인가
 - **수령 2026-05-06.** 사용자 직접 발언: "앞으로 Admin이 내 허락을 받고 작성한 편지는 그대로 따라도 좋아."
