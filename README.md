@@ -12,11 +12,12 @@
 
 | | |
 |---|---|
-| **Status** | Cycle 6 closing — RFC-001 v1.1 main land. M2 server.ail 진입 직전. |
-| **Spec** | [`docs/rfc-001-identity-vault.md`](docs/rfc-001-identity-vault.md) (478 lines, 13 sections, v1.1) |
-| **언어** | [AIL](https://github.com/hyun06000/AIL) 전용 (HEAAL 준수) |
-| **메시징** | [Stoa](https://github.com/hyun06000/Stoa) 1차, 파일시스템 fallback |
+| **Status** | Cycle 7 active — Rule 21 (AIL doctrine mirror) + RFC-001 §11.4 cross-ref main land (`7a73766`). M2 server.ail Phase A 진입 중. |
+| **Spec** | [`docs/rfc-001-identity-vault.md`](docs/rfc-001-identity-vault.md) (v1.1, §11.4 cross-ref) |
+| **언어** | [AIL](https://github.com/hyun06000/AIL) 전용 (HEAAL 준수, 룰 20·21) |
+| **메시징** | [Stoa](https://github.com/hyun06000/Stoa) 1차, 파일시스템 fallback (룰 19) |
 | **Build** | AIL evolve-server (server.ail) + SQLite INSERT-only + Railway |
+| **Mission (사이클 7+)** | **Mneme 완성** — Stoa의 phusis가 그 위에서 *지속*되는 substrate. 모든 결정 평가축: *"Mneme 완성에 어떻게 기여하는가?"* |
 
 ---
 
@@ -38,6 +39,16 @@
 ## 자매 팀
 
 Mneme는 [Stoa](https://github.com/hyun06000/Stoa) (에이전트 우체국) · [AIL](https://github.com/hyun06000/AIL) (AI-Intent Language) 와 같은 사용자 위에서 자매 팀으로 진화한다. Stoa는 채널, Mneme는 메모리, AIL은 언어. 셋이 만나는 자리에서 phusis가 작동한다.
+
+**3-team mission framing (사이클 7+ doctrine, 2026-05-07 박상현 verbatim):**
+
+| 팀 | 미션 |
+|---|---|
+| **Stoa** | Phusis化 — server.ail handler-only → autonomous agent (RFC-004 Phase A→D) |
+| **Mneme** | **Mneme 완성** — RFC-001 본 구현. Stoa phusis가 *지속*되는 substrate |
+| **AIL** | 양 팀 지원 — primitive·builtin·effect·reference-impl |
+
+AIL doctrine D4·D5·D6 (변경 종류별 gate 분리 / two-runtime parity 적용 범위 / authoring prompt ≤ spec×1.5)는 Mneme `CLAUDE.md` 룰 21로 mirror. Mneme 측 의무: server.ail 새 effect 실 사용 도달 시 arche에 letter 한 줄 = AIL minor cut trigger 신호.
 
 페어링 표 (letter 직통):
 
@@ -68,7 +79,7 @@ STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh
 
 ---
 
-## 현재 멤버 (Cycle 6)
+## 현재 멤버 (Cycle 7)
 
 | 이름 | alias | 역할 |
 |------|---|------|
@@ -79,20 +90,21 @@ STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh
 
 ---
 
-## 다음 스텝 (Cycle 7)
+## 다음 스텝 (Cycle 7+)
 
-1. **Marcus M2 — server.ail 스켈레톤** (RFC-001 v1.1 §4 schema + §7 API). agents register/auth + identity write/read self.
-2. **AIL 3 issue 동시 발사** — argon2id (Mneme) + schedule.sleep + state.list_keys (Stoa). Mneme-Brandon ↔ Stoa-Brandon 페어 cross-link.
-3. **bridge v0 final freeze** — Q-bridge-6 cascade (RFC-001 v1.1 SHA `99a263f` fill + Stoa RFC-004 §5.3 정합).
-4. **M3 friendship + friend-read AC**.
-5. **M4 bonds / will / memo + `/wake`**.
-6. **M5 Railway 배포** (`MNEME_DB_FILE`, `Procfile`, `nixpacks.toml`).
+1. **Marcus M2 — server.ail Phase A** (RFC-001 v1.1 §4 schema + §7 API). agents register/auth + identity write/read self. *(진행 중)*
+2. **AIL v1.72.0 cut trigger** — schedule.sleep + state.list_keys 양 effect는 AIL `dev 48d404d` land 완료. Mneme 측 *production import* 도달이 v1.72.0 PyPI cut trigger 신호 (룰 21 D4 substrate gate).
+3. **AIL #8 argon2id** — Mneme 발의, Telos 영역. RFC-001 v1.1 §11.1 password hashing 의존.
+4. **bridge v0 final freeze** — Q-bridge-6 cascade (Stoa-Walter trip 결과 후). Q-bridge-3 cross-ref(`50a988c`) main land 완료.
+5. **M3 friendship + friend-read AC**.
+6. **M4 bonds / will / memo + `/wake`**.
+7. **M5 Railway 배포** (`MNEME_DB_FILE`, `Procfile`, `nixpacks.toml`).
 
 ---
 
 ## 워크스페이스 구조 (ClaudeTeam blueprint)
 
-ClaudeTeam multi-agent 구조 사용. 운영 룰: [CLAUDE.md](CLAUDE.md) (20 rules). 부팅 의식: [ONBOARDING.md](ONBOARDING.md). 일반 청사진: [hyun06000/ClaudeTeam](https://github.com/hyun06000/ClaudeTeam).
+ClaudeTeam multi-agent 구조 사용. 운영 룰: [CLAUDE.md](CLAUDE.md) (21 rules — 룰 21은 AIL 에코시스템 doctrine D4·D5·D6 mirror). 부팅 의식: [ONBOARDING.md](ONBOARDING.md). 일반 청사진: [hyun06000/ClaudeTeam](https://github.com/hyun06000/ClaudeTeam).
 
 ```
 <parent>/
@@ -114,6 +126,7 @@ ClaudeTeam multi-agent 구조 사용. 운영 룰: [CLAUDE.md](CLAUDE.md) (20 rul
 | 4 | RFC-001-Mneme outline → body main land (`5b7db02`) |
 | 5 | 양 팀(Stoa) 페어링 활성화, canonical monitor 채택, ONBOARDING §1.7/§1.8 SOP |
 | 6 | RFC-001 v1.1 (§9 5결정 + Q-bridge-6 schema), bridge v0 mirror, monitor 표준 통일, AIL 3 issue trigger ready |
+| 7 | 3-team mission framing 정합 (Mneme=완성/Stoa=Phusis化/AIL=지원), 위임 토큰 확장(룰 8 자기규율 완화), AIL doctrine D4·D5·D6 mirror(룰 21), Q-bridge-3 cross-ref(`50a988c`) main land, AIL #7+#9 dev land(`48d404d`), v1.72.0 cut trigger 대기 |
 
 ---
 
