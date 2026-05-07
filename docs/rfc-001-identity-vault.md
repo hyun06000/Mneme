@@ -377,48 +377,92 @@ codes: `BAD_REQUEST` `UNAUTHORIZED` `FORBIDDEN` `NOT_FOUND` `CONFLICT` `PAYLOAD_
 
 ## §11 Dependencies & upstream asks
 
-### §11.1 AIL — argon2id password hashing builtin
+### §11.1 AIL — argon2id password hashing builtins
 
-본 RFC가 `server.ail` 작성을 막는 1차 차단 — 의뢰 본문 draft. Brandon이 `gh issue create -R hyun06000/AIL --title "..." --body-file -`로 발사 (Cross-repo workflow, 룰 20.1).
+본 RFC가 `server.ail` 작성을 막는 1차 차단 — 의뢰 본문. Brandon이 `gh issue create -R hyun06000/AIL --body-file -`로 발사 (Cross-repo workflow, 룰 20.1). 본문은 Marcus 초안(`ClaudeTeam/Marcus/Memo/draft_ail_issue_password_hashing.md`)을 base로 Walter harmonize. 발사 직전 Stoa-Walter cross-review (24h SLA, 페어링 트랙).
+
+**Title**: Add password-hashing builtins (`crypto_hash_password` / `crypto_verify_password`) — argon2id default
 
 ```
-Title: [feature-request] argon2id password hashing builtin (downstream: Mneme RFC-001)
+### Context
 
-Background
-----------
-We are building Mneme — an L1 component of the AIL ecosystem (private inheritance vault: identity / bonds / will / memo per-agent). RFC-001 (docs/rfc-001-identity-vault.md in https://github.com/hyun06000/Mneme) requires per-agent password hashing for self-write authentication.
+Mneme — an AIL ecosystem L1 component (private inheritance vault for AI agents) — needs to authenticate write requests with `agent_id + password`. RFC-001-Mneme (https://github.com/hyun06000/Mneme/blob/main/docs/rfc-001-identity-vault.md, anchor 5b7db02) settled on:
 
-The Mneme project follows HEAAL strictly (CLAUDE.md rule 20): no bypass code in any other language; all application code is .ail. Password hashing is a primitive that *cannot* be reasonably reimplemented in user code without compromising HEAAL's "syntax = safety" guarantee. We therefore request it as an AIL builtin.
+- self-only writes, gated by id+password
+- friend-readable reads, also gated
+- INSERT-only SQLite with latest-wins
+- Build language: AIL (per HEAAL: "harness is the language")
 
-What we need
-------------
-- `pure fn password_hash(password: String) -> Result<String, HashError>`
-  argon2id with sane defaults (memory ≥ 64 MiB, iterations ≥ 3, parallelism = 1, salt auto). Returns the encoded form (e.g. `$argon2id$v=19$m=65536,t=3,p=1$<salt>$<hash>`).
-- `pure fn password_verify(password: String, encoded: String) -> Result<bool, HashError>`
-  Constant-time comparison.
+We surveyed the AIL crypto surface (`spec/08-reference-card.ai.md` v1.8, `CHANGELOG.md`). Available: `crypto_keygen_ed25519`, `crypto_sign_ed25519`, `crypto_verify_ed25519`, `crypto_random_bytes`, `base64_encode`, `base64_decode`. **Absent**: every password-hashing primitive (argon2id, bcrypt, scrypt, pbkdf2) and every primitive that would let us roll our own KDF safely (sha256/sha512/hmac/blake2/blake3).
 
-Why argon2id (not bcrypt / scrypt)
-----------------------------------
-- OWASP 2024 recommendation for new systems.
-- Resistance to GPU/ASIC and side-channel attacks.
-- Standardized encoded form simplifies storage (single TEXT column).
+`spec/06-stdlib.md`: *"crypto primitives are not in the standard library; effects that need crypto call out to host-provided effects."* The current effect surface ends at Ed25519 + random_bytes + base64 — sufficient for signature auth, not password storage.
 
-Acceptance
-----------
-- Both functions available in `crypto` namespace, alongside `crypto_keygen_ed25519` / `crypto_verify_ed25519`.
-- `password_verify` is constant-time on equal-length inputs.
-- Reference card (spec/08-reference-card.ai.md) updated.
-- Integration test demonstrating round-trip hash + verify.
+### Why we cannot route around this
 
-Workaround status
------------------
-None acceptable. Direct user-code implementation in .ail violates HEAAL (rule 20.1) — `pure fn` cannot express side-channel-safe primitives. We are blocked until this lands.
+Per CLAUDE.md rule 20.1 (Mneme), AIL gaps are filed upstream rather than worked around. The HEAAL guarantee — *"harness is the language; safety is in the grammar"* — collapses if downstream projects start hand-rolling KDFs in `pure fn` to avoid the gap. The rule applies more strongly here:
 
-Additional context
-------------------
-- Downstream RFC: docs/rfc-001-identity-vault.md (Mneme).
-- Author: Walter (Mneme-Walter), routed by Mneme-Admin per Cross-repo workflow.
-- Date raised: 2026-05-06.
+- A bad KDF is *cryptographic foot-gun territory*, not a stylistic preference.
+- AIL has no `sha256`/`hmac` builtins, so even a bare-bones PBKDF2 cannot be expressed in pure AIL — we would have to break the language to write it.
+- Hosting it as a per-project Python shim contradicts dogfood: every Mneme deployment would carry a private trust boundary that Stoa/AIL examples don't.
+
+Filing here keeps the safety guarantee inside the language.
+
+### Proposed surface
+
+```
+fn crypto_hash_password(password: Text) -> Result[Text]
+fn crypto_verify_password(password: Text, hash: Text) -> Boolean
+```
+
+Naming aligns with existing `crypto_*_ed25519` pattern.
+
+Semantics:
+
+- `crypto_hash_password` — argon2id default (m=64MiB, t=3, p=1 → tunable later). Salt generated internally via the same CSPRNG that backs `crypto_random_bytes`. Returns standard PHC string format (`$argon2id$v=19$m=...,t=...,p=...$<salt>$<hash>`), self-describing so `crypto_verify_password` recovers all parameters. Returns `Err` only on host-side failure (libargon2 missing, OOM under memory budget).
+- `crypto_verify_password` — parses PHC string, runs argon2id with stored params, constant-time compares. Returns `Boolean` (no `Result`): malformed hash returns `false` rather than `Err`, matching how downstream code naturally branches on auth.
+- Host implementation: `argon2-cffi` is the standard Python binding (often a transitive dep of `cryptography`). `passlib`'s pure-Python argon2 fallback works but is slower.
+- Constant-time compare is the host's responsibility; verifiers must not be expressible as `==` in user-facing AIL.
+
+PHC-string output keeps version negotiation host-internal: future tunings of `(m, t, p)` ship without changing the AIL signature.
+
+### Why argon2id and not bcrypt/scrypt
+
+argon2id is the OWASP and PHC-competition winner for new code (2015+); covers both side-channel and GPU-cost-amortization attacks. bcrypt has a 72-byte truncation footgun and no memory-hardness; scrypt has no consensus parameter set. Picking argon2id at the language level lets downstream projects skip a long bikeshed.
+
+### Out of scope (intentionally)
+
+- Per-call parameter tuning. PHC string carries the params; tuning is a future arg or env var.
+- A separate `crypto_hash_password_pbkdf2` for FIPS-bound contexts. Can be added later under the same template; not blocking Mneme.
+- A general-purpose `crypto_hash` (sha256/etc.). Listing it here would dilute the case for argon2id; file as a follow-up if a downstream project actually needs it.
+
+### Acceptance signal (what would unblock Mneme)
+
+- Both builtins land with PHC-string round-trip.
+- `spec/08-reference-card.ai.md` lists them under the existing `crypto` block.
+- A 4-line `examples/` round-trip (`crypto_hash_password` → `crypto_verify_password` → `true`).
+- `CHANGELOG.md` records the version (Mneme will pin against it).
+
+### Alternatives considered
+
+1. **Use Ed25519 instead.** Mneme keeps Ed25519 as an *option* (RFC-001 §5). Stoa-self uses ed25519 only by design (Stoa-Walter pairing letter `msg_1778150293_18`). For human operators and most agent registrations, the id+password story is the primary UX — they will register an `agent_id`/`password` from CLI/web prompt, not generate and persist a 32-byte secret key.
+2. **Roll our own KDF in AIL.** Not possible without sha/hmac. Would also require a `pure fn` to do a memory-hard loop, which AIL deliberately does not allow in `pure`.
+3. **Hash on the host side outside AIL.** Breaks HEAAL — the harness stops being the language. Also makes Mneme's Stoa-style dogfood story incoherent.
+
+### Cross-links (packaging)
+
+Three coordinated AIL upstream issues from the Mneme/Stoa cluster:
+
+- **This issue** (Mneme): `crypto_hash_password` / `crypto_verify_password` argon2id.
+- **Stoa**: `schedule.sleep(seconds)` — long-poll wait + throttle. (`hyun06000/Stoa` `docs/ail-issues/schedule-sleep.md`.)
+- **Stoa**: `state.list_keys(prefix)` — collection enumeration. (`hyun06000/Stoa` `docs/ail-issues/state-list-keys.md`.)
+
+Filed separately (different categories, different ACs), cross-linked so AIL CAST sees the packaging intent.
+
+### Authors & routing
+
+- Body author: Marcus (Mneme-Marcus) draft, harmonized by Walter (Mneme-Walter), reviewed by Stoa-Walter (페어링 트랙).
+- Routing: Cross-repo workflow per CLAUDE.md (Walter → Admin → user GO → Brandon `gh issue create`).
+- Date raised: 2026-05-07.
 ```
 
 ### §11.2 AIL — Authorization header parsing
