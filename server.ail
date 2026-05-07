@@ -9,23 +9,32 @@
 // INNER JOIN). RFC-001 §4 schema, §7 API surface.
 
 // -----------------------------------------------------------------------------
-// Pure validators (RFC-001 §4 / §6 / §7 / §8 T8)
+// Validators (RFC-001 §4 / §6 / §7 / §8 T8)
+//
+// Note on `pure fn` — RFC-001 §10 maps validators to `pure fn`, but AIL's
+// trusted-pure builtin set does not include `contains` (it is a recognized
+// builtin — see spec/08-reference-card.ai.md — but not certified pure).
+// Marking these `pure fn` causes a PurityError. Stoa's server.ail follows
+// the same convention: validators are plain `fn`, behaviorally pure (no
+// `perform`). Pure annotation is reserved for fns whose call graph is fully
+// trusted-pure (e.g., a future canonical_letter-style fn). Upstream issue
+// candidate: have AIL certify `contains` as trusted-pure.
 // -----------------------------------------------------------------------------
 
-pure fn _is_alnum_underscore_dash(c: Text) -> Boolean {
+fn _is_alnum_underscore_dash(c: Text) -> Boolean {
     // Permits A-Z a-z 0-9 _ - (single char).
     return contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-", c)
 }
 
-pure fn _is_lower_alnum_underscore_dash(c: Text) -> Boolean {
+fn _is_lower_alnum_underscore_dash(c: Text) -> Boolean {
     return contains("abcdefghijklmnopqrstuvwxyz0123456789_-", c)
 }
 
-pure fn _is_alpha(c: Text) -> Boolean {
+fn _is_alpha(c: Text) -> Boolean {
     return contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c)
 }
 
-pure fn validate_agent_id(s: Text) -> Boolean {
+fn validate_agent_id(s: Text) -> Boolean {
     // ^[A-Za-z][A-Za-z0-9_-]{0,63}$  (RFC-001 §4)
     n = length(s)
     if n < 1 { return false }
@@ -35,13 +44,13 @@ pure fn validate_agent_id(s: Text) -> Boolean {
     return _scan_agent_id_tail(s, 1, n)
 }
 
-pure fn _scan_agent_id_tail(s: Text, i: Number, n: Number) -> Boolean {
+fn _scan_agent_id_tail(s: Text, i: Number, n: Number) -> Boolean {
     if i >= n { return true }
     if not _is_alnum_underscore_dash(slice(s, i, i + 1)) { return false }
     return _scan_agent_id_tail(s, i + 1, n)
 }
 
-pure fn validate_memo_slug(s: Text) -> Boolean {
+fn validate_memo_slug(s: Text) -> Boolean {
     // ^[a-z0-9_-]{1,64}$  (RFC-001 §4)
     n = length(s)
     if n < 1 { return false }
@@ -49,18 +58,18 @@ pure fn validate_memo_slug(s: Text) -> Boolean {
     return _scan_memo_slug(s, 0, n)
 }
 
-pure fn _scan_memo_slug(s: Text, i: Number, n: Number) -> Boolean {
+fn _scan_memo_slug(s: Text, i: Number, n: Number) -> Boolean {
     if i >= n { return true }
     if not _is_lower_alnum_underscore_dash(slice(s, i, i + 1)) { return false }
     return _scan_memo_slug(s, i + 1, n)
 }
 
-pure fn validate_password(s: Text) -> Boolean {
+fn validate_password(s: Text) -> Boolean {
     // RFC-001 §7 register: password length >= 12.
     return length(s) >= 12
 }
 
-pure fn validate_friend_status(s: Text) -> Boolean {
+fn validate_friend_status(s: Text) -> Boolean {
     return s == "active" or s == "revoked"
 }
 
