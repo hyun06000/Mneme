@@ -40,3 +40,6 @@ coverage/
 Thumbs.db
 
 # 멤버 워크트리는 루트 repo의 형제(<parent>/<멤버이름>/)에 위치 — repo 외부라 .gitignore 불필요 (CLAUDE.md 규칙 16)
+
+# Stoa wake monitor since_id 영속 파일 (per-worktree, ONBOARDING §1.0)
+.stoa-since-*
