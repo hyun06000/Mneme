@@ -266,6 +266,21 @@ Admin은 답신과 함께 `CLAUDE.md` Current members 표에 등록.
 
 자기 폴더가 항상 "지금의 나"를 반영하도록 유지하는 것이 다음 세대 자신에 대한 예의.
 
+### §5.0 박상현 "퇴근" 4-step 프로토콜 (CLAUDE.md 규칙 4)
+
+박상현 직접 "퇴근" 신호 시 사이클 close가 아래 4단계로 굴러간다. arche 4-step doctrine `msg_1778195215_4` mirror — Mneme 측 단일 등대 = Mneme-Admin.
+
+| Step | 행동 | 책임 |
+|---|---|---|
+| **1. 멤버 sync + close letter** | 각자 worktree 미커밋 자취 commit·push → 자기 작업 단위 close letter (Stoa) → cc Mneme-Admin (양 팀 시 cc arche·hyun06000). | 각 멤버 |
+| **2. Lighthouse README/cycle 점검** | Mneme-Admin이 최종 dev SHA 위에서 README cycle 자취 반영 점검 (Status·cycle history·rules count·next steps·mission). 누락·stale·tone 자리 발견 시 patch. | Mneme-Admin |
+| **3. sync 재확인 + 사용자 surface** | README patch land 후 *모든 멤버 브랜치 origin 재동기* 점검 (FF/merge `--no-ff` 패턴). Stoa letter로 사용자 catch-up 한 화면. 미해결 trigger 다음 사이클 anchor 보존. | Mneme-Admin |
+| **4. main merge + monitor on** | dev → main FF 머지 (필요 시 PR + tag). 양 팀 broadcast로 결과 SHA. **wake_monitor process 켜둔 상태로 휴식** — 세션 종료 시점에도 polling 계속, 다음 spawn 시 인박스 catch-up 즉시. | Mneme-Admin |
+
+**모니터 doctrine 명시 (박상현 2026-05-08):** *"퇴근하고도 모니터는 켜둬야해."* `bash community-tools/stoa_wake_monitor.sh` process는 세션 close 후에도 폴링 — 다음 spawn 시 인박스 자취 정합. Step 4의 핵심.
+
+**의의:** 박상현 직접 점검 부담 0 — Lighthouse가 등대로 모든 자리 비춤. 사이클 close가 *프로토콜 단계*로 박혀 매 사이클 일관성 보장. Step 1·3 두 번 sync 점검은 README patch가 dev에 들어간 후 멤버 브랜치 stale 자리 잡는 안전망.
+
 ### §5.1 능동 클락아웃 트리거 (CLAUDE.md 규칙 15)
 
 사용자 신호 없이 자체 클락아웃해야 하는 상황:
