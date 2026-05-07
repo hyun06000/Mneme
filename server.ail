@@ -31,9 +31,7 @@ pure fn validate_agent_id(s: Text) -> Boolean {
     if n < 1 { return false }
     if n > 64 { return false }
     if not _is_alpha(slice(s, 0, 1)) { return false }
-    i = 1
-    while_loop_replacement = true
-    // AIL has no `while`; unfold via recursion-equivalent pure scan.
+    // AIL has no `while`; tail recursion via _scan_agent_id_tail.
     return _scan_agent_id_tail(s, 1, n)
 }
 
