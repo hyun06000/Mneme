@@ -169,18 +169,19 @@ fn route(req: Any) -> [Any] {
 // Entry — server lifecycle (RFC-001 §10 mapping)
 // -----------------------------------------------------------------------------
 
+// Schema bootstrap intentionally NOT in `when boot()` — AIL MVP evolve only
+// recognizes canonical event names (`request_received`, ...). Unknown events
+// have their bodies parsed as evolve action declarations (spec/04 §4) and
+// reject local bindings. Phase A endpoints (/health) are DB-free; the first
+// DB-touching endpoint in Phase B will call `ensure_schema(db_path)` lazily
+// before its first INSERT (idempotent CREATE IF NOT EXISTS).
+
 evolve mneme_server {
     listen: 8091
     effects: [http.respond, db.execute, db.query, clock.now, env.read]
     metric: error_rate
     rollback_on: error_rate > 0.9
     history: keep_last 100
-
-    when boot() {
-        db_path = perform env.read("MNEME_DB_FILE")
-        // ensure_schema is idempotent — safe to call every boot.
-        ignore = ensure_schema(db_path)
-    }
 
     when request_received(req) {
         result = route(req)
