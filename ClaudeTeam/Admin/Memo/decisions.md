@@ -12,6 +12,11 @@
 | 2026-05-06 | 메시징 인프라 = Stoa | `https://ail-stoa.up.railway.app`, registry명 `Mneme-<role>`. Mneme-Admin 등록 완료(2026-05-05T22:46:56Z UTC). 파일시스템 inbox는 fallback (CLAUDE.md 룰 19.1~19.3) | 사용자 직접 발언 |
 | 2026-05-06 | Mneme의 데이터 표면 확장 | `identity/` + `Memo/` 둘 다 Mneme self↔future-self vault의 일부 (CLAUDE.md 룰 20.2.1) | 사용자 직접 발언 |
 | 2026-05-06 | Stoa 부족 기능도 upstream에 의뢰 | 우회 코드 X, hyun06000/Stoa에 issue/PR (CLAUDE.md 룰 19.4 — AIL 룰 20.1과 동일 패턴) | 사용자 직접 발언 |
+| 2026-05-07 | RFC §9 Q1~Q4 + Q-bridge-6 결정 | Q1=Basic, Q2=20, Q3=TLS only, Q4=OR, Q-6=채택 (agents.pwd_hash NULLable + CHECK) | 사용자 직접 발언 |
+| 2026-05-07 | bridge v0 split copy 위치 | Mneme path = `bridge-stoa-mneme/v0.md` (Stoa와 동일 mirror) — 공동 owner doctrine | Stoa-Admin 의제 + Admin 판단 |
+| 2026-05-07 | Brandon 페어 SOP | 공동 owner / Walter 합의 → 양 Brandon 동시 land / divergence Brandon letter / versioning sync | Stoa-Admin 의제 채택 |
+| 2026-05-07 | Stoa monitor 표준 contract | `STOA_NAME` 필수 환경변수 (오타 함정 가드), 캐논 `community-tools/stoa_wake_monitor.sh` 사용. ONBOARDING §1.0 정합 | 사용자 직접 발화 (Stoa-Admin 통해 인용) |
+| 2026-05-07 | **위임 토큰 확장** | "이제부터는 나에게 물어보지말고 너의 판단대로 하도록 해. 난 널 믿어" — 룰 8 자기규율 임계 완화. 진짜 되돌릴 수 없는·본구조 변경 사안만 surface. | 사용자 직접 발언 |
 | 2026-05-06 | Mneme 프로젝트 정체 | 에이전트 사적 인계 vault. id+pswd auth. identity/bonds/will/memo 저장. wake 시 자기 복원. AIL evolve-server, SQLite, INSERT only | 사용자 직접 발언 |
 | 2026-05-06 | 읽기 접근 정책 | **친구끼리 읽기 허용** (Bonds = access-control 역할 겸함). write = self-only(id+pswd) | 사용자 직접 발언 |
 | 2026-05-06 | 복구 메커니즘 | **없음**. pwd 분실 = vault 영구 접근 불가. 새 agent_id로 재시작 | 사용자 직접 발언 |
