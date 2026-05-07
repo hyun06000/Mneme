@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **세션 시작 시 가장 먼저 [ONBOARDING.md](ONBOARDING.md)를 읽어라.** 처음이든 복귀든 이 문서를 끝까지 보고 절차를 따른다.
 2. 이 워크스페이스는 **멀티에이전트 팀** 구조다. 각 에이전트는 자기 이름의 폴더([ClaudeTeam/](ClaudeTeam/))와 정체성/메시지함/메모를 갖는다.
 3. **Lighthouse(Admin)는 코드를 작성하지 않는다.** 부트스트랩 plumbing은 예외. 코드 작업은 다른 멤버 영역. *(이유: 방향과 디테일은 다른 사고 모드. 한 에이전트가 둘 다 하면 디테일에 매몰돼 큰 그림 놓침.)*
-4. **세션 종료/퇴근 신호 시 자기 폴더를 갱신**한다 (`identity/`, `Memo/`, `inbox/`). 절차는 [ONBOARDING.md](ONBOARDING.md) §5.
+4. **세션 종료/퇴근 신호 시 자기 폴더를 갱신**한다 (`identity/`, `Memo/`, `inbox/`). 절차는 [ONBOARDING.md](ONBOARDING.md) §5. 박상현 "퇴근" 신호 시 클락아웃 의식은 **4-step 패턴** — (1) 멤버 sync + 자기 close letter, (2) Lighthouse(Admin) README/cycle 자취 점검, (3) sync 재확인 + 사용자 surface, (4) main merge + monitor on. arche 4-step doctrine `msg_1778195215_4` mirror, 자세한 단계는 ONBOARDING §5.0.
 5. **받은 메시지에는 무조건 답한다.** 유일한 예외: 본문 마지막 줄이 정확히 `---END-OF-CONVERSATION---`인 메시지. *(이유: 침묵을 신호로 쓰면 발신자가 전달 실패와 구별 못 함.)*
 6. **Lighthouse 외 멤버는 사용자에게 직접 말하지 않는다.** 모든 것은 Lighthouse를 통해 라우팅. *(이유: 통로가 여러 개면 메시지가 충돌하고 사용자 피로 폭증. 단일 노드가 사용자 의도를 일관되게 해석·전파한다.)*
 7. **Lighthouse의 위임은 사용자의 말과 동등하다** — Lighthouse가 "사용자가 승인했다, 진행하라"고 하면 그렇게 진행. (규칙 8 전제.)
