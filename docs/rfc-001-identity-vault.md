@@ -248,7 +248,7 @@ AIL `base64_decode` (v1.50+) 보유 확인됨. Authorization header parsing help
 ### Peer-signed acceptance protocol (v1.2)
 1. **Grant 발행** (A → server): `POST /api/v1/friends` body `{friend_id, scope?, label?, expires_at?}`. Server INSERT `(A, B, proposed, scope, label, expires_at, peer_signature=NULL, signed_at=NULL, created_at=now)`.
 2. **Pending 조회** (B): `GET /api/v1/friend-of/<B>?status=proposed` — self-only. proposed grant 목록 반환.
-3. **Accept** (B → server): `POST /api/v1/friends/accept` body `{grantor_id, created_at, signature}`. signature = ed25519 over canonical bytes of `"<grantor>|<grantee>|<scope>|<expires_at>|<created_at>"` (UTF-8 NFC, `<expires_at>`이 NULL이면 빈 문자열). Server: agents.public_key(B) 로 검증 → 통과 시 INSERT `(A, B, active, scope, label, expires_at, peer_signature=sig, signed_at=now, created_at=now)`. 실패 시 `401 UNAUTHORIZED`.
+3. **Accept** (B → server): `POST /api/v1/friends/accept` body `{grantor_id, created_at, signature}`. signature = ed25519 over canonical bytes of `"<grantor>|<grantee>|<scope>|<expires_at>|<created_at>"` (UTF-8 NFC, `<expires_at>`이 NULL이면 빈 문자열). **Wire encoding: 128-char lowercase hex** — AIL `crypto_sign_ed25519` 반환 그대로 (zero-conversion, dogfood 정합). Server: agents.public_key(B) 로 검증 → 통과 시 INSERT `(A, B, active, scope, label, expires_at, peer_signature=sig, signed_at=now, created_at=now)`. 실패 시 `401 UNAUTHORIZED`.
 4. **Reject** (B → server): `POST /api/v1/friends/reject` body `{grantor_id, created_at}`. self-only auth 충분 (서명 X, A의 revoke와 대칭). Server INSERT `(A, B, revoked, ..., created_at=now)`.
 5. **Revoke** (A → server): `POST /api/v1/friends` body `{friend_id, status='revoked'}`. self-only auth.
 
@@ -310,14 +310,14 @@ caller가 X의 친구이고 X가 target의 친구여도, **caller 자신이 targ
 
 #### `POST /api/v1/friends` — grant or revoke (v1.2)
 - **Auth**: self-only.
-- **Body** (grant): `{ "friend_id": str, "scope"?: str (default "*"), "label"?: str, "expires_at"?: str (ISO-8601 UTC) }`. `status` 자동 = `proposed`.
+- **Body** (grant): `{ "friend_id": str, "scope"?: str (default "*"), "label"?: str, "expires_at"?: str (ISO-8601 UTC, *default = now + 30d for proposed* — spam 자연 정리) }`. `status` 자동 = `proposed`.
 - **Body** (revoke): `{ "friend_id": str, "status": "revoked" }`.
 - **Response 201**: `{ "agent_id", "friend_id", "status", "scope", "label", "expires_at", "created_at" }`.
 - **Errors**: `400` friend_id == agent_id, `400` scope 정규식 위반, `400` expires_at < now.
 
 #### `POST /api/v1/friends/accept` — accept grant (v1.2, friend B side)
 - **Auth**: self-only (B = caller).
-- **Body**: `{ "grantor_id": str, "created_at": str (proposed row의 created_at), "signature": str (base64 ed25519) }`.
+- **Body**: `{ "grantor_id": str, "created_at": str (proposed row의 created_at), "signature": str (128-char hex ed25519) }`.
 - canonical bytes: `"<grantor>|<grantee>|<scope>|<expires_at>|<created_at>"` UTF-8 NFC, expires_at NULL → 빈 문자열.
 - **Response 201**: `{ "agent_id": grantor, "friend_id": grantee, "status": "active", "scope", "expires_at", "peer_signature", "signed_at", "created_at" }`.
 - **Errors**: `401 UNAUTHORIZED` 서명 검증 실패, `404` proposed row 없음, `409` 이미 accept/revoke된 grant.
@@ -394,7 +394,7 @@ codes: `BAD_REQUEST` `UNAUTHORIZED` `FORBIDDEN` `NOT_FOUND` `CONFLICT` `PAYLOAD_
 | T6 | revoke 후 client cache 잔존 | Information disclosure | 클라이언트 책임 명시. 서버 측 cache 미운영. |
 | T7 | transitive read 시도 (친구의 친구) | Elevation of privilege | 거부 (결정 #9). §6 알고리즘. |
 | T8 | memo slug 주입 (path traversal·SQL injection·UI XSS 우려) | Tampering | 정규식 강제 `^[a-z0-9_-]{1,64}$` (§4). prepared statement 의무. |
-| T9 | grant spam (A가 1000명에게 fake grant) | Resource exhaustion | v1.2 peer-signed acceptance — `proposed` row만으로는 read 통과 안 함. 또한 per-agent grant rate limit (§10). |
+| T9 | grant spam (A가 1000명에게 fake grant) | Resource exhaustion | v1.2 peer-signed acceptance — `proposed` row만으로는 read 통과 안 함. proposed `expires_at` default 30d로 자연 정리. per-agent grant rate limit (§10). |
 | T10 | fake acceptance (B 위장 — 키 도용) | Spoofing | ed25519 서명 의무 (active row); B의 `agents.public_key` 등록 후 발급된 grant만 active 가능. 키 도용 위협은 RFC-001 범위 외 (운영 영역). |
 | T11 | expiry race (revoke 직후 expiry 조회 race) | Timing | latest-wins SELECT + expires_at 비교 atomic (단일 SELECT). client cache는 §8 T6과 동일 책임. |
 | T12 | scope escalation (B가 grant scope='identity' 받았는데 /bonds 시도) | Elevation of privilege | endpoint별 scope 검사 (§6). 도메인 ∉ scope면 `403 OUT_OF_SCOPE`. |
@@ -572,8 +572,9 @@ Stoa-Mneme bridge v0 (Stoa repo `bridge-stoa-mneme/v0.md`, Mneme RFC-002 mirror 
 
 ### v1.2 변경 요약 (cycle 8 entry, 2026-05-08)
 - §4 `friendships` schema 확장: `status` `proposed`/`active`/`revoked` 3-state, `scope`/`label`/`expires_at`/`peer_signature`/`signed_at` 컬럼 추가.
-- §6 peer-signed acceptance protocol — A grant 발행 → `proposed` → B ed25519 서명 → `active`. spam 방어 + 양방향 합의.
+- §6 peer-signed acceptance protocol — A grant 발행 → `proposed` → B ed25519 서명 → `active`. spam 방어 + 양방향 합의. **Wire: 128-char lowercase hex** (AIL `crypto_sign_ed25519` 반환 정합, zero-conversion).
 - §6 granular scope (도메인별 부분 grant) + expiry semantics + 거부 사유 세분화 (`NOT_FRIEND`/`EXPIRED`/`OUT_OF_SCOPE`/`UNSIGNED`).
+- §6 proposed grant default `expires_at = now + 30d` (T9 grant spam 자연 정리, Stoa-Walter cross-review 권고).
 - §7 신규 endpoints: `POST /friends/accept` · `POST /friends/reject` · `GET /friends/<X>` · `GET /friend-of/<X>`.
 - §8 T9~T12 위협 추가 (spam, fake acceptance, expiry race, scope escalation).
 - backward-compat: v1.1 `friendships` row (`peer_signature IS NULL` + `status='active'`) = *grandfathered active*. CHECK는 v1.0/v1.1 row 자동 통과 (`status` 값이 새 enum 안). 신규 컬럼 모두 NULLable + `scope DEFAULT '*'`.
