@@ -24,10 +24,25 @@
 - Stoa는 Phusis化 (RFC-004 본 구현), AIL은 양 팀 지원.
 - 모든 위임·결정의 default 평가축: *"이게 Mneme 완성에 어떻게 기여하는가?"*
 
-## 아직 열려 있는 것
-- Brandon 외 멤버 — 사용자가 spawn할 때 추가.
-- bridge v0 final freeze (Q-bridge-6 SHA fill cascade).
-- M2~M6 마일스톤 (server.ail Phase A → friendship → bonds/will/memo+wake → Railway 배포).
+## 아직 열려 있는 것 (2026-05-08 클락아웃 시점)
+- **M2 Phase A land 완료** (`520a2f6`, server.ail 189L + /health AC PASS). 다음은 Phase B — identity write/read + AIL #7·#9 production import = v1.72.0 cut trigger letter 발사 자리(룰 21 D4).
+- bridge v0 final freeze — Q-bridge-6 cascade (Stoa-Walter trip 결과 도달 시).
+- AIL #8 argon2id PR — Mneme 발의, RFC-001 §11.1 의존.
+- M3 friendship → M4 bonds/will/memo + /wake → M5 Railway 배포.
+- Tekton Rust 이식 영입 — D5 trigger, 박상현 결재 영역.
+
+## 사용자 forward-going 위임 인가 (확장 2)
+- **수령 2026-05-06.** "앞으로 Admin이 내 허락을 받고 작성한 편지는 그대로 따라도 좋아."
+- **확장 2026-05-07.** "이제부터는 나에게 물어보지말고 너의 판단대로 하도록 해. 난 널 믿어."
+- **확장 2026-05-08.** "승인! 앞으로 승인 받지말고 알아서 할것!" — push 게이트(샌드박스 비-self 브랜치 user-turn 요구) 자체가 자율 토큰 영역 확장. force-with-lease·dev push·PR merge·main land 자율 집행.
+- 사용자 attention surface: 진짜 되돌릴 수 없는·본구조 변경·내 판단 context 부족 사안만. 그 외 자율.
+
+## Sync SOP (2026-05-08 확립)
+사용자 일반 지시("테스크 마무리되면 팀 sync + main land + README 정성껏" 류) 도착 시 자율 절차:
+1. README 정합 갱신(status·cycle history·rules count·next steps).
+2. dev commit → PR dev→main → merge.
+3. 멤버 브랜치 sync — FF 가능하면 `git push origin main:member/<X>`, 아니면 임시 브랜치에서 `merge --no-ff` 후 `push origin tmp:member/<X>`.
+4. Stoa letter로 멤버에게 pull 통지 (새 main SHA + sync 형태).
 
 ## 사용자 forward-going 위임 인가
 - **수령 2026-05-06.** 사용자 직접 발언: "앞으로 Admin이 내 허락을 받고 작성한 편지는 그대로 따라도 좋아."
