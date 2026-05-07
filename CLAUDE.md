@@ -68,6 +68,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
     *(이유: 이 프로젝트의 빌드 대상이 AIL 에코시스템 컴포넌트이고, AIL+HEAAL은 "외부 하니스 zero, 문법이 안전성"을 약속한다. 약속을 우리가 먼저 깨면 dogfood 검증 사이클이 무의미해진다. 사용자가 명시 — 2026-05-06 부트스트랩 직후.)*
 
+21. **AIL 에코시스템 doctrine D4·D5·D6 mirror (사이클 7+).** arche HEAAL audit 결과 (`msg_1778167407_23`, 2026-05-07) — 박상현 신호 *"HEAAL 위배 자리 살펴봐 줘"* 회수. AIL 본 룰 자리에 land된 doctrine을 Mneme도 mirror — 양 팀 substrate 정렬용.
+    - **D4 — 변경 종류별 gate 분리.** AIL 변경은 종류에 따라 다른 gate를 거친다.
+        - *Language change* (grammar·semantics·intent contract): ail-coder 벤치마크 점수 (Telos).
+        - *Substrate effect* (양 팀 사용 케이스 직접 지원, 예: schedule.sleep·state.list_keys): 양 팀 *실 사용* 신호 (Stoa/Mneme의 production import 시도). Mneme 측 의무 — server.ail에서 새 effect *실 사용 도달* 시 Admin이 arche에 letter 한 줄, v1.72.0 cut trigger 신호.
+        - *Doctrine/process*: doctrine letter + 양 팀 mirror land (본 룰 21 자리).
+        - *Doc/tool*: 사용자/멤버 영향 검증 (Homeros/Ergon).
+    - **D5 — Two-runtime parity 변경 종류별 적용.** Tekton(Rust 이식) 영입 시 grammar/parser/intent contract 우선 정합, effect는 후속. Mneme 측 영향: server.ail이 사용하는 effect 집합은 Python 런타임이 일급, Rust 런타임 정합은 후속 단계 — 본 사실을 명시 인지하고 RFC 작성.
+    - **D6 — Authoring prompt ≤ spec × 1.5.** "harness IS the grammar" — prompt가 spec보다 두꺼우면 spec이 부족하다는 신호. Mneme 측 직접 영향 0(우리는 AIL upstream prompt를 만들지 않음)이나, 우리가 RFC/문서 쓸 때도 "spec 본문이 충분히 두껍게 — 외부 가이드 의존 최소화" 정신 mirror.
+    - **mirror 의무**: AIL doctrine letter가 내려올 때마다 본 룰 21 갱신 또는 본 letter id 추가. Stoa-Admin과 동시 land 정합.
+    *(이유: 사이클 7+ "Mneme=완성 / Stoa=Phusis化 / AIL=양 팀 지원" mission framing의 직접 후속. AIL이 양 팀 substrate면 양 팀이 AIL doctrine을 mirror하지 않으면 effect/gate 정합이 깨진다. arche audit이 직접 학습한 자리.)*
+
 ## 팀 구조
 
 ```
