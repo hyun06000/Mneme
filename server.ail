@@ -1,0 +1,199 @@
+// Mneme — Identity Vault server (RFC-001-Mneme v1.1)
+//
+// Phase A scaffold — health endpoint + schema bootstrap + pure-fn validators.
+// Auth-bearing endpoints (register/auth/identity/...) land in subsequent commits
+// after AIL #8 (argon2id) lands and is pinned in CHANGELOG.
+//
+// Pattern: Stoa server.ail dogfood (linear route dispatch, 3-tuple response,
+// INSERT-only SQLite, latest-wins via ORDER BY rowid DESC LIMIT 1 / MAX(rowid)
+// INNER JOIN). RFC-001 §4 schema, §7 API surface.
+
+// -----------------------------------------------------------------------------
+// Validators (RFC-001 §4 / §6 / §7 / §8 T8)
+//
+// Note on `pure fn` — RFC-001 §10 maps validators to `pure fn`, but AIL's
+// trusted-pure builtin set does not include `contains` (it is a recognized
+// builtin — see spec/08-reference-card.ai.md — but not certified pure).
+// Marking these `pure fn` causes a PurityError. Stoa's server.ail follows
+// the same convention: validators are plain `fn`, behaviorally pure (no
+// `perform`). Pure annotation is reserved for fns whose call graph is fully
+// trusted-pure (e.g., a future canonical_letter-style fn). Upstream issue
+// candidate: have AIL certify `contains` as trusted-pure.
+// -----------------------------------------------------------------------------
+
+fn _is_alnum_underscore_dash(c: Text) -> Boolean {
+    // Permits A-Z a-z 0-9 _ - (single char).
+    return contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-", c)
+}
+
+fn _is_lower_alnum_underscore_dash(c: Text) -> Boolean {
+    return contains("abcdefghijklmnopqrstuvwxyz0123456789_-", c)
+}
+
+fn _is_alpha(c: Text) -> Boolean {
+    return contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c)
+}
+
+fn validate_agent_id(s: Text) -> Boolean {
+    // ^[A-Za-z][A-Za-z0-9_-]{0,63}$  (RFC-001 §4)
+    n = length(s)
+    if n < 1 { return false }
+    if n > 64 { return false }
+    if not _is_alpha(slice(s, 0, 1)) { return false }
+    // AIL has no `while`; tail recursion via _scan_agent_id_tail.
+    return _scan_agent_id_tail(s, 1, n)
+}
+
+fn _scan_agent_id_tail(s: Text, i: Number, n: Number) -> Boolean {
+    if i >= n { return true }
+    if not _is_alnum_underscore_dash(slice(s, i, i + 1)) { return false }
+    return _scan_agent_id_tail(s, i + 1, n)
+}
+
+fn validate_memo_slug(s: Text) -> Boolean {
+    // ^[a-z0-9_-]{1,64}$  (RFC-001 §4)
+    n = length(s)
+    if n < 1 { return false }
+    if n > 64 { return false }
+    return _scan_memo_slug(s, 0, n)
+}
+
+fn _scan_memo_slug(s: Text, i: Number, n: Number) -> Boolean {
+    if i >= n { return true }
+    if not _is_lower_alnum_underscore_dash(slice(s, i, i + 1)) { return false }
+    return _scan_memo_slug(s, i + 1, n)
+}
+
+fn validate_password(s: Text) -> Boolean {
+    // RFC-001 §7 register: password length >= 12.
+    return length(s) >= 12
+}
+
+fn validate_friend_status(s: Text) -> Boolean {
+    return s == "active" or s == "revoked"
+}
+
+// -----------------------------------------------------------------------------
+// Response helpers (3-tuple [status, content_type, body] — Stoa pattern)
+// -----------------------------------------------------------------------------
+
+fn json_ok(status: Number, body: Text) -> [Any] {
+    return [status, "application/json", body]
+}
+
+fn err_json(status: Number, code: Text, message: Text) -> [Any] {
+    body = join(["{\"error\":{\"code\":\"", code, "\",\"message\":\"", message, "\"}}"], "")
+    return [status, "application/json", body]
+}
+
+// -----------------------------------------------------------------------------
+// Schema bootstrap (RFC-001 §4) — INSERT-only, latest-wins.
+// -----------------------------------------------------------------------------
+
+fn ensure_schema(db: Any) -> Result[Boolean] {
+    // agents (v1.1: pwd_hash NULLable + CHECK)
+    r1 = perform db.execute(db,
+        "CREATE TABLE IF NOT EXISTS agents (agent_id TEXT PRIMARY KEY, pwd_hash TEXT, public_key TEXT, registered_at TEXT NOT NULL, CHECK (pwd_hash IS NOT NULL OR public_key IS NOT NULL)) WITHOUT ROWID",
+        [])
+    if is_error(r1) { return r1 }
+
+    r2 = perform db.execute(db,
+        "CREATE TABLE IF NOT EXISTS identity_versions (agent_id TEXT NOT NULL, version INTEGER NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (agent_id, version), FOREIGN KEY (agent_id) REFERENCES agents(agent_id))",
+        [])
+    if is_error(r2) { return r2 }
+    r2b = perform db.execute(db, "CREATE INDEX IF NOT EXISTS idx_identity_latest ON identity_versions(agent_id, version DESC)", [])
+    if is_error(r2b) { return r2b }
+
+    r3 = perform db.execute(db,
+        "CREATE TABLE IF NOT EXISTS bonds_entries (agent_id TEXT NOT NULL, entry_id INTEGER NOT NULL, content TEXT NOT NULL, peer_id TEXT, created_at TEXT NOT NULL, PRIMARY KEY (agent_id, entry_id))",
+        [])
+    if is_error(r3) { return r3 }
+    r3b = perform db.execute(db, "CREATE INDEX IF NOT EXISTS idx_bonds_recent ON bonds_entries(agent_id, entry_id DESC)", [])
+    if is_error(r3b) { return r3b }
+
+    r4 = perform db.execute(db,
+        "CREATE TABLE IF NOT EXISTS friendships (agent_id TEXT NOT NULL, friend_id TEXT NOT NULL, status TEXT NOT NULL CHECK (status IN ('active','revoked')), created_at TEXT NOT NULL, PRIMARY KEY (agent_id, friend_id, created_at))",
+        [])
+    if is_error(r4) { return r4 }
+    r4b = perform db.execute(db, "CREATE INDEX IF NOT EXISTS idx_friendship_pair ON friendships(agent_id, friend_id, created_at DESC)", [])
+    if is_error(r4b) { return r4b }
+
+    r5 = perform db.execute(db,
+        "CREATE TABLE IF NOT EXISTS will_versions (agent_id TEXT NOT NULL, version INTEGER NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (agent_id, version))",
+        [])
+    if is_error(r5) { return r5 }
+    r5b = perform db.execute(db, "CREATE INDEX IF NOT EXISTS idx_will_latest ON will_versions(agent_id, version DESC)", [])
+    if is_error(r5b) { return r5b }
+
+    r6 = perform db.execute(db,
+        "CREATE TABLE IF NOT EXISTS memo_versions (agent_id TEXT NOT NULL, slug TEXT NOT NULL, version INTEGER NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (agent_id, slug, version))",
+        [])
+    if is_error(r6) { return r6 }
+    r6b = perform db.execute(db, "CREATE INDEX IF NOT EXISTS idx_memo_latest ON memo_versions(agent_id, slug, version DESC)", [])
+    if is_error(r6b) { return r6b }
+
+    return true
+}
+
+// -----------------------------------------------------------------------------
+// Handlers
+// -----------------------------------------------------------------------------
+
+fn handle_health(req: Any) -> [Any] {
+    return json_ok(200, "{\"status\":\"ok\",\"version\":\"1.0.0-phaseA\"}")
+}
+
+fn handle_not_implemented(req: Any) -> [Any] {
+    return err_json(501, "INTERNAL", "endpoint pending — Phase A scaffold (argon2id #8 land needed for auth path)")
+}
+
+// -----------------------------------------------------------------------------
+// Router (RFC-001 §7 — linear if/else on method+path; Stoa pattern)
+// -----------------------------------------------------------------------------
+
+fn route(req: Any) -> [Any] {
+    method = req.method
+    path = req.path
+
+    if method == "GET" and path == "/api/v1/health" { return handle_health(req) }
+
+    // Phase A — auth-bearing endpoints stub. Land progressively in Phase B/C
+    // once AIL #8 (argon2id) provides crypto_hash_password / crypto_verify_password.
+    if method == "POST" and path == "/api/v1/agents"   { return handle_not_implemented(req) }
+    if method == "POST" and path == "/api/v1/identity" { return handle_not_implemented(req) }
+    if method == "POST" and path == "/api/v1/will"     { return handle_not_implemented(req) }
+    if method == "POST" and path == "/api/v1/bonds"    { return handle_not_implemented(req) }
+    if method == "POST" and path == "/api/v1/memo"     { return handle_not_implemented(req) }
+    if method == "POST" and path == "/api/v1/friends"  { return handle_not_implemented(req) }
+    if method == "GET"  and starts_with(path, "/api/v1/identity/") { return handle_not_implemented(req) }
+    if method == "GET"  and starts_with(path, "/api/v1/will/")     { return handle_not_implemented(req) }
+    if method == "GET"  and starts_with(path, "/api/v1/bonds/")    { return handle_not_implemented(req) }
+    if method == "GET"  and starts_with(path, "/api/v1/memo/")     { return handle_not_implemented(req) }
+    if method == "GET"  and starts_with(path, "/api/v1/wake/")     { return handle_not_implemented(req) }
+
+    return err_json(404, "NOT_FOUND", "no route")
+}
+
+// -----------------------------------------------------------------------------
+// Entry — server lifecycle (RFC-001 §10 mapping)
+// -----------------------------------------------------------------------------
+
+// Schema bootstrap intentionally NOT in `when boot()` — AIL MVP evolve only
+// recognizes canonical event names (`request_received`, ...). Unknown events
+// have their bodies parsed as evolve action declarations (spec/04 §4) and
+// reject local bindings. Phase A endpoints (/health) are DB-free; the first
+// DB-touching endpoint in Phase B will call `ensure_schema(db_path)` lazily
+// before its first INSERT (idempotent CREATE IF NOT EXISTS).
+
+evolve mneme_server {
+    listen: 8091
+    effects: [http.respond, db.execute, db.query, clock.now, env.read]
+    metric: error_rate
+    rollback_on: error_rate > 0.9
+    history: keep_last 100
+
+    when request_received(req) {
+        result = route(req)
+        perform http.respond(get(result, 0), get(result, 1), get(result, 2))
+    }
+}
