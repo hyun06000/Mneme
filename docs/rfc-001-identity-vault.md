@@ -124,19 +124,31 @@ CREATE INDEX idx_bonds_recent ON bonds_entries(agent_id, entry_id DESC);
 
 ### `friendships`
 ```sql
+-- v1.2 schema (v1.1 행은 backward-compat — §12 참조)
 CREATE TABLE friendships (
-  agent_id   TEXT NOT NULL,             -- grantor (data owner)
-  friend_id  TEXT NOT NULL,             -- grantee (read-allowed)
-  status     TEXT NOT NULL CHECK (status IN ('active','revoked')),
-  created_at TEXT NOT NULL,
+  agent_id        TEXT NOT NULL,        -- grantor (data owner)
+  friend_id       TEXT NOT NULL,        -- grantee (read-allowed)
+  status          TEXT NOT NULL CHECK (status IN ('proposed','active','revoked')),
+  scope           TEXT NOT NULL DEFAULT '*',  -- comma-list of domain (identity,bonds,will,memo) 또는 '*' (all)
+  label           TEXT,                 -- optional human-readable nickname
+  expires_at      TEXT,                 -- ISO-8601 UTC, NULL = no expiry
+  peer_signature  TEXT,                 -- v1.2+ — friend(B)의 ed25519 서명 (active row에 의무, legacy row NULL 허용)
+  signed_at       TEXT,                 -- friend가 accept 시 서명 시점
+  created_at      TEXT NOT NULL,
   PRIMARY KEY (agent_id, friend_id, created_at)
 );
 CREATE INDEX idx_friendship_pair ON friendships(agent_id, friend_id, created_at DESC);
 ```
-- 의미: row `(A, B, active, t)` = "A는 B에게 자기 데이터 read 권한을 t에 부여".
-- Latest-wins per `(agent_id, friend_id)`: 가장 최근 created_at의 `status`가 현재 상태.
-- Revoke = `(A, B, revoked, t')` INSERT.
+- 의미: row `(A, B, ...)` = "A→B grant" — A가 B에게 자기 데이터 read 권한을 부여.
+- Latest-wins per `(agent_id, friend_id)`: 가장 최근 created_at의 row가 현재 상태.
 - 단방향 (결정 #11). B→A 권한은 별도 grant.
+- **상태 전이** (v1.2):
+  - `proposed`: A가 grant 발행. B의 accept 서명 대기.
+  - `active`: B가 ed25519로 accept 서명. read 통과 가능.
+  - `revoked`: A 또는 B가 종료. 즉시 효력.
+- **Scope**: v1.2+ granular. `'*'` = 전체 도메인. 부분 grant 가능 (예: `'identity,bonds'`).
+- **Expires**: v1.2+. `expires_at` 도달 시 read 시점 비교로 자동 inactive (실 row INSERT 없음, latest-wins SELECT + expiry check).
+- **legacy 호환**: v1.1 row(`peer_signature IS NULL` + `status='active'`)는 *grandfathered active*로 인정 (§12).
 
 ### `will_versions`
 ```sql
@@ -220,25 +232,45 @@ AIL `base64_decode` (v1.50+) 보유 확인됨. Authorization header parsing help
 2. URL/body의 `agent_id`가 caller_id와 다르면 `403 Forbidden`.
 3. body 내 `version` / `entry_id`는 무시 — 서버가 `MAX+1` assign.
 
-### Friend-read
+### Friend-read (v1.2)
 모든 GET:
-1. Basic auth로 `caller_id`.
-2. target = URL의 `<agent_id>`.
-3. **caller == target** → 통과 (self-read).
-4. 아니면 `friendships` 조회: latest row per `(target, caller)` (즉 `agent_id=target AND friend_id=caller` 최신) status가 `active`이면 통과, 아니면 `403`.
+1. 인증으로 `caller_id` 추출 (§5 Basic 또는 Signature).
+2. target = URL의 `<agent_id>`. domain = endpoint가 다루는 도메인 (`identity` / `bonds` / `will` / `memo`; `/wake`는 *모든* 도메인 의무).
+3. **caller == target** → 통과 (self-read, scope 무관).
+4. 아니면 `friendships` 조회: latest row per `(target, caller)` (즉 `agent_id=target AND friend_id=caller` 최신).
+5. 통과 조건 (모두 만족):
+   - row 존재 + `status='active'`.
+   - `expires_at IS NULL OR expires_at > now()`.
+   - `scope='*'` 또는 domain ∈ scope (콤마 split).
+   - peer_signature 검증: row가 *legacy* (created_at < v1.2 cutover SHA, 즉 `peer_signature IS NULL`)이면 grandfathered 통과. v1.2+ row면 `peer_signature` ed25519 검증 통과 의무.
+6. 그 외 → `403 FORBIDDEN`. 거부 사유 `error.code` 세분화: `NOT_FRIEND` / `EXPIRED` / `OUT_OF_SCOPE` / `UNSIGNED`.
+
+### Peer-signed acceptance protocol (v1.2)
+1. **Grant 발행** (A → server): `POST /api/v1/friends` body `{friend_id, scope?, label?, expires_at?}`. Server INSERT `(A, B, proposed, scope, label, expires_at, peer_signature=NULL, signed_at=NULL, created_at=now)`.
+2. **Pending 조회** (B): `GET /api/v1/friend-of/<B>?status=proposed` — self-only. proposed grant 목록 반환.
+3. **Accept** (B → server): `POST /api/v1/friends/accept` body `{grantor_id, created_at, signature}`. signature = ed25519 over canonical bytes of `"<grantor>|<grantee>|<scope>|<expires_at>|<created_at>"` (UTF-8 NFC, `<expires_at>`이 NULL이면 빈 문자열). Server: agents.public_key(B) 로 검증 → 통과 시 INSERT `(A, B, active, scope, label, expires_at, peer_signature=sig, signed_at=now, created_at=now)`. 실패 시 `401 UNAUTHORIZED`.
+4. **Reject** (B → server): `POST /api/v1/friends/reject` body `{grantor_id, created_at}`. self-only auth 충분 (서명 X, A의 revoke와 대칭). Server INSERT `(A, B, revoked, ..., created_at=now)`.
+5. **Revoke** (A → server): `POST /api/v1/friends` body `{friend_id, status='revoked'}`. self-only auth.
+
+### Granular scope (v1.2)
+- `scope='*'` — 모든 도메인 (default).
+- 부분 — `'identity'`, `'identity,bonds'`, etc. comma-split, dedup, sort.
+- `/wake/<agent_id>`는 모든 도메인 의무 — friend가 부분 scope면 `403 OUT_OF_SCOPE`.
+- 도메인별 endpoint는 자기 도메인만 검사 — 예: `GET /api/v1/identity/<X>`는 `identity` ∈ scope만 검증.
 
 ### Transitive 거부 (결정 #9)
 caller가 X의 친구이고 X가 target의 친구여도, **caller 자신이 target의 친구로 grant되지 않으면 거부**. 자동 transitive 없음.
 
 ### Revoke 효력
-- `(target, caller, revoked, t')` INSERT 직후의 모든 read 요청은 거부. 즉시 효력.
+- 새 row `status='revoked'` INSERT 직후의 모든 read 요청은 거부. 즉시 효력.
 - Revoke 시점 *이전* read가 만든 client cache는 RFC 범위 외 — 클라이언트 책임 (§8 T6).
+- A·B 둘 다 revoke 가능 (대칭).
 
 ### 자기 친구 등록
 - `agent_id == friend_id` INSERT 거부 (`400`). self-read는 grant 없이 통과하므로 redundant.
 
 ### 미등록 friend
-- `friend_id`가 `agents`에 없어도 INSERT 허용 (forward grant). 단 read 시점에는 friend로 caller_id 인증되어야 의미 있음. 이후 friend가 register하면 grant 자동 효력.
+- `friend_id`가 `agents`에 없어도 grant 발행 (`proposed`) 허용 (forward grant). 단 active로 진입하려면 B가 register + accept 서명 필요. v1.2 이후 *legacy active grandfathered*는 v1.1 시절 이미 active였던 row만 — 새 v1.2 grant는 모두 peer-signed 통과 의무.
 
 ---
 
@@ -276,10 +308,35 @@ caller가 X의 친구이고 X가 target의 친구여도, **caller 자신이 targ
 - **Response 201**: `{ "agent_id", "slug", "version", "created_at" }`
 - **Errors**: `400` slug 정규식 위반.
 
-#### `POST /api/v1/friends` — grant or revoke
-- **Body**: `{ "friend_id": str, "status": "active"|"revoked" }`
-- **Response 201**: `{ "agent_id", "friend_id", "status", "created_at" }`
-- **Errors**: `400` friend_id == agent_id, `400` status 값 invalid.
+#### `POST /api/v1/friends` — grant or revoke (v1.2)
+- **Auth**: self-only.
+- **Body** (grant): `{ "friend_id": str, "scope"?: str (default "*"), "label"?: str, "expires_at"?: str (ISO-8601 UTC) }`. `status` 자동 = `proposed`.
+- **Body** (revoke): `{ "friend_id": str, "status": "revoked" }`.
+- **Response 201**: `{ "agent_id", "friend_id", "status", "scope", "label", "expires_at", "created_at" }`.
+- **Errors**: `400` friend_id == agent_id, `400` scope 정규식 위반, `400` expires_at < now.
+
+#### `POST /api/v1/friends/accept` — accept grant (v1.2, friend B side)
+- **Auth**: self-only (B = caller).
+- **Body**: `{ "grantor_id": str, "created_at": str (proposed row의 created_at), "signature": str (base64 ed25519) }`.
+- canonical bytes: `"<grantor>|<grantee>|<scope>|<expires_at>|<created_at>"` UTF-8 NFC, expires_at NULL → 빈 문자열.
+- **Response 201**: `{ "agent_id": grantor, "friend_id": grantee, "status": "active", "scope", "expires_at", "peer_signature", "signed_at", "created_at" }`.
+- **Errors**: `401 UNAUTHORIZED` 서명 검증 실패, `404` proposed row 없음, `409` 이미 accept/revoke된 grant.
+
+#### `POST /api/v1/friends/reject` — reject grant (v1.2, friend B side)
+- **Auth**: self-only (B = caller).
+- **Body**: `{ "grantor_id": str, "created_at": str }`.
+- **Response 201**: revoke row 그대로.
+- **Errors**: `404` proposed row 없음.
+
+#### `GET /api/v1/friends/<agent_id>` — list grants A 발행 (v1.2)
+- **Auth**: self-only (caller == agent_id).
+- **Query**: `?status=proposed|active|revoked|all` default `all`. `?scope=identity` 등 도메인 필터.
+- **Response 200**: `{ "agent_id", "friends": [{ "friend_id", "status", "scope", "label", "expires_at", "peer_signature", "signed_at", "created_at" }, ...] }`. latest row per pair.
+
+#### `GET /api/v1/friend-of/<agent_id>` — list grants A에게 받음 (v1.2)
+- **Auth**: self-only (caller == agent_id).
+- **Query**: 동일.
+- **Response 200**: `{ "agent_id", "grantors": [{ "grantor_id", "status", "scope", "label", "expires_at", "signed_at", "created_at" }, ...] }`.
 
 #### `GET /api/v1/identity/<agent_id>` — read latest identity
 - **Auth**: Basic. self or active-friendship.
@@ -300,7 +357,7 @@ caller가 X의 친구이고 X가 target의 친구여도, **caller 자신이 targ
 - **Response 200**: `{ "agent_id", "slug", "version", "content", "created_at" }`
 
 #### `GET /api/v1/wake/<agent_id>` — 1-shot bundle
-- **Auth**: Basic. self or active-friendship.
+- **Auth**: self or active-friendship with `scope='*'` (모든 도메인 의무, v1.2).
 - **Response 200**:
 ```json
 {
@@ -321,7 +378,7 @@ caller가 X의 친구이고 X가 target의 친구여도, **caller 자신이 targ
 ```json
 { "error": { "code": "FORBIDDEN", "message": "..." } }
 ```
-codes: `BAD_REQUEST` `UNAUTHORIZED` `FORBIDDEN` `NOT_FOUND` `CONFLICT` `PAYLOAD_TOO_LARGE` `INTERNAL`.
+codes: `BAD_REQUEST` `UNAUTHORIZED` `FORBIDDEN` `NOT_FOUND` `CONFLICT` `PAYLOAD_TOO_LARGE` `INTERNAL`. v1.2 friendship 거부 세분화: `NOT_FRIEND` `EXPIRED` `OUT_OF_SCOPE` `UNSIGNED` (모두 HTTP 403).
 
 ---
 
@@ -337,11 +394,15 @@ codes: `BAD_REQUEST` `UNAUTHORIZED` `FORBIDDEN` `NOT_FOUND` `CONFLICT` `PAYLOAD_
 | T6 | revoke 후 client cache 잔존 | Information disclosure | 클라이언트 책임 명시. 서버 측 cache 미운영. |
 | T7 | transitive read 시도 (친구의 친구) | Elevation of privilege | 거부 (결정 #9). §6 알고리즘. |
 | T8 | memo slug 주입 (path traversal·SQL injection·UI XSS 우려) | Tampering | 정규식 강제 `^[a-z0-9_-]{1,64}$` (§4). prepared statement 의무. |
+| T9 | grant spam (A가 1000명에게 fake grant) | Resource exhaustion | v1.2 peer-signed acceptance — `proposed` row만으로는 read 통과 안 함. 또한 per-agent grant rate limit (§10). |
+| T10 | fake acceptance (B 위장 — 키 도용) | Spoofing | ed25519 서명 의무 (active row); B의 `agents.public_key` 등록 후 발급된 grant만 active 가능. 키 도용 위협은 RFC-001 범위 외 (운영 영역). |
+| T11 | expiry race (revoke 직후 expiry 조회 race) | Timing | latest-wins SELECT + expires_at 비교 atomic (단일 SELECT). client cache는 §8 T6과 동일 책임. |
+| T12 | scope escalation (B가 grant scope='identity' 받았는데 /bonds 시도) | Elevation of privilege | endpoint별 scope 검사 (§6). 도메인 ∉ scope면 `403 OUT_OF_SCOPE`. |
 
 추가 고려:
 - **DoS**: per-agent rate limit (§10). 글로벌 IP rate limit는 운영 영역.
 - **재등록 race**: `agents.agent_id PK`로 차단.
-- **Forward grant 오용**: friend_id 미등록도 INSERT 허용 (§6) — read 시점 인증으로만 의미 — 직접 위험 낮음.
+- **Forward grant 오용**: friend_id 미등록도 INSERT 허용 (§6) — `proposed` 상태이므로 active 진입 불가. v1.2가 v1.0 위험 자연 완화.
 
 ---
 
@@ -508,6 +569,14 @@ Stoa-Mneme bridge v0 (Stoa repo `bridge-stoa-mneme/v0.md`, Mneme RFC-002 mirror 
 - §5 `Authorization: Signature` ed25519 path 명시 + auth path 매트릭스.
 - §9 Q1~Q4 + Q-bridge-6 모두 Decision 박힘.
 - §11.1 argon2id 의뢰 본문 통합 (Marcus draft + Walter harmonize + Stoa-Walter cross-review).
+
+### v1.2 변경 요약 (cycle 8 entry, 2026-05-08)
+- §4 `friendships` schema 확장: `status` `proposed`/`active`/`revoked` 3-state, `scope`/`label`/`expires_at`/`peer_signature`/`signed_at` 컬럼 추가.
+- §6 peer-signed acceptance protocol — A grant 발행 → `proposed` → B ed25519 서명 → `active`. spam 방어 + 양방향 합의.
+- §6 granular scope (도메인별 부분 grant) + expiry semantics + 거부 사유 세분화 (`NOT_FRIEND`/`EXPIRED`/`OUT_OF_SCOPE`/`UNSIGNED`).
+- §7 신규 endpoints: `POST /friends/accept` · `POST /friends/reject` · `GET /friends/<X>` · `GET /friend-of/<X>`.
+- §8 T9~T12 위협 추가 (spam, fake acceptance, expiry race, scope escalation).
+- backward-compat: v1.1 `friendships` row (`peer_signature IS NULL` + `status='active'`) = *grandfathered active*. CHECK는 v1.0/v1.1 row 자동 통과 (`status` 값이 새 enum 안). 신규 컬럼 모두 NULLable + `scope DEFAULT '*'`.
 
 ---
 
