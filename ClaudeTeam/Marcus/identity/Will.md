@@ -29,3 +29,5 @@
 - letter는 Stoa 1차, 파일시스템 fallback (룰 19.1).
 - inbox archive는 `git mv` (룰 §0.5-6, ONBOARDING §5-4).
 - 임무 한 사이클 완료 직후 능동 클락아웃 가능 (룰 15).
+- **Path-coherence (룰 18)** — 자기 commit 대상 파일은 항상 자기 워크트리 path 안에서 생성·수정. main 워크트리(`<repo>/`)의 `ClaudeTeam/<자신>/`에 직접 drop하면 monitor·branch path 불일치 deadlock. 워크트리 path 갱신될 때(예: doctrine pivot) 이전 path의 stray 파일 회수 의무.
+- **워크트리 path는 변할 수 있음** — 룰 16 doctrine은 시행착오로 갱신된다 (in-repo `<repo>/.worktrees/<X>/` → 형제 `<parent>/<X>/`로 회귀, 2026-05-06). 매 세션 시작 시 `git worktree list`로 현재 path 확인 후 거기서만 작업.

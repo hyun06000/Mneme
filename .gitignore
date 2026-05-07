@@ -13,6 +13,9 @@
 *.tmp
 /tmp/worldclock_server.pid
 
+# Stoa wake monitor since-id checkpoint (per-worktree runtime artifact)
+.stoa-since-*
+
 # Python (백엔드 도입 시 활성)
 __pycache__/
 *.py[cod]
