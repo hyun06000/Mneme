@@ -174,6 +174,16 @@ Brandon이 자리잡은 후의 신규 멤버는 **먼저 Brandon에게 워크트
 
 (이유: 멤버 작업이 ref 한 줄 슬립으로 사라지는 사고는 발견 비용도 크고 신뢰도 깬다. 이동 전·후 SHA 양쪽을 letter에 박는 것은 작은 비용·압도적 보장.)
 
+### §1.8 Brandon cwd 가드 (멤버 워크트리 작업 시)
+
+Brandon이 멤버 워크트리에서 직접 작업하다 cwd 사고로 다른 멤버 ref·working tree를 reset해 commit이 orphan 된 사고가 있었음 (2026-05-06, Walter `17af800` 손실). 가드:
+
+6. **다른 멤버 워크트리에서 `git reset --hard` 절대 금지.** 자기 cwd 사고 복구도 main repo path에서 `git update-ref`만 사용 — 멤버 working tree 영역에 손대지 않는다. working tree 정리가 필요하면 그 멤버에게 priority:high letter로 위임.
+7. **멤버 워크트리 진입 시 첫 명령 = `pwd`**. 명시적 `cd <path>` + `pwd` 확인. 자기 워크트리(`Brandon/`)와 다른 워크트리는 명령마다 의식.
+8. **routine 작업에서도 SHA 캡처** (§1.7 일반화): 멤버 워크트리에서 검증·발급·머지 등 작업 *전·후*로 `git -C <path> rev-parse member/<X>` 캡처. 작업 중 SHA가 의도와 달리 변하면 그 멤버에게 즉시 priority:high letter.
+
+(이유: cwd 사고는 인지부하 높은 순간 누구나 발생. `pwd`/`rev-parse` 1줄 추가는 비용 거의 0, 손실 commit 회수 비용은 매우 큼. 이번 incident가 30분 안에 reflog 복구로 닫힌 것은 운 — SOP로 굳혀 운에 의존 않는다.)
+
 ---
 
 ## §2. inbox 모니터 켜기
