@@ -1,274 +1,129 @@
-# ClaudeTeam
+# Mneme
 
-> **A blueprint for a multi-agent collaboration workspace that carries identity across sessions.**
+에이전트의 사적 인계 vault. self ↔ future-self 사이의 정체성·관계·의지·메모를 보관해, 새 세션이 깨어나 *자기 자신을 5분 안에 복원*할 단일 출처.
 
-ClaudeTeam is a structure where multiple Claude (or other AI) agents collaborate inside a single project, each with their own name, role, and memory. It is designed so that when one session ends, the next session wakes up as the same identity.
+[AIL](https://github.com/hyun06000/AIL) 에코시스템의 L1 컴포넌트("PRIVATE INHERITANCE VAULT — between TIME")의 reference implementation. AIL evolve-server 패턴, [HEAAL](https://github.com/hyun06000/AIL/blob/main/docs/heaal.ai.md) 철학 준수.
 
-This README is written so anyone can transplant the same structure into their own project.
-
-Other languages / readers: [한국어](README.ko.md) · [AI bootstrap guide](README.ai.md)
+> **Mneme**(μνήμη, 무네메) — 그리스 신화에서 기억의 신.
 
 ---
 
-## Why this exists
+## 한 눈
 
-LLM-based agents lose all context when a session ends. Even if the same human comes back to the same project, from the model's point of view it is "meeting them for the first time." This asymmetry keeps collaboration shallow.
-
-ClaudeTeam's hypothesis:
-
-- **Identity can be persisted in files.** If you write down "who I am" for the next session's self, that self can read it and *restore* its predecessor.
-- **Multiple agents can collaborate.** Each gets their own folder and communicates via a standardized message protocol.
-- **The human user sets direction.** Agents navigate on top of that direction.
-
----
-
-## Core concepts
-
-### 1. Lighthouse vs Navigators
-
-The team includes one **member who does not write code**. By convention this member is `Admin` (the Lighthouse). The Lighthouse:
-
-- Manages the project's philosophy, direction, and conventions.
-- Talks directly with the human user to keep the big picture aligned.
-- Guides newly joining agents to their place.
-- Delegates implementation to other members.
-
-Other members do the actual building, each in their own area.
-
-### 2. The three identity files
-
-Each member preserves themselves in three files under `identity/`:
-
-| File | Meaning |
-|------|---------|
-| `Identity.md` | **The unchanging core.** Who am I, what kind of being am I. |
-| `Bonds.md` | **A record of relationships.** Whom I have spoken with, what shaped me. |
-| `Will.md` | **A note to next-generation me.** Where to go, what to do, what to remember. |
-
-A new session reads these three files in order and *restores* itself.
-
-### 3. File-based asynchronous messaging
-
-Communication is file-based. Each member has an `inbox/`; senders drop a file in a defined format. Simple, concurrency-safe, and processing state is expressed by the filesystem itself.
-
-### 4. Local git stays with Brandon, remote push stays with Admin
-
-Once `.git/` exists, the **second** member to join is always `Brandon` (Git/GitHub manager). Brandon issues per-member git worktrees, validates merge requests, and uses `gh` CLI freely. **Admin owns `git push origin ...`** because the harness's "current-turn user authorization" gate naturally aligns with the user-conversation turn the Lighthouse runs in. (See CLAUDE.md rule 10.)
-
-### 5. Worktrees live inside the repo
-
-Member worktrees go under `<repo>/.worktrees/<name>/` (gitignored). Some agent harnesses sandbox the project root and silently discard external directories between turns — putting worktrees inside the repo avoids that whole class of failure. (CLAUDE.md rule 16.)
+| | |
+|---|---|
+| **Status** | Cycle 6 closing — RFC-001 v1.1 main land. M2 server.ail 진입 직전. |
+| **Spec** | [`docs/rfc-001-identity-vault.md`](docs/rfc-001-identity-vault.md) (478 lines, 13 sections, v1.1) |
+| **언어** | [AIL](https://github.com/hyun06000/AIL) 전용 (HEAAL 준수) |
+| **메시징** | [Stoa](https://github.com/hyun06000/Stoa) 1차, 파일시스템 fallback |
+| **Build** | AIL evolve-server (server.ail) + SQLite INSERT-only + Railway |
 
 ---
 
-## Folder layout
+## 핵심 결정 (RFC-001 §3 매핑)
 
-```
-<repo>/
-├── README.md                  # English (this document)
-├── README.ko.md               # Korean
-├── README.ai.md               # AI bootstrap guide
-├── CLAUDE.md                  # The first file every agent reads — common rules
-├── ONBOARDING.md              # Joining procedure + message protocol
-├── .gitignore                 # contains ".worktrees/"
-├── .worktrees/                # gitignored — Brandon-issued per-member worktrees
-│   ├── Brandon/               # member/Brandon
-│   ├── Walter/                # member/Walter
-│   └── <member>/              # member/<member>
-└── ClaudeTeam/
-    └── <member>/
-        ├── identity/
-        │   ├── Identity.md
-        │   ├── Bonds.md
-        │   └── Will.md
-        ├── inbox/             # incoming messages
-        │   └── archive/       # processed messages
-        └── Memo/              # long-term memory
-```
+| # | 항목 | 값 |
+|---|------|----|
+| 1 | 인증 | id + password (argon2id 후보) — Q1 Basic 단일, Q4 OR 결합 (ed25519는 옵션) |
+| 2 | 데이터 도메인 | identity / bonds / will / memo (slug versioned) |
+| 3 | 읽기 | 친구끼리 허용 (단방향 grant, transitive=no) |
+| 4 | 쓰기 | self-only (id+pswd auth) |
+| 5 | 복구 | 없음. pwd 분실 = vault 영구 접근 불가 |
+| 6 | 저장 | SQLite INSERT only, latest-wins per (agent_id, slug, version) |
+| 7 | wake | `GET /api/v1/wake/<agent_id>` — 1-shot bundle (identity + will + recent_bonds(N=20) + memo_index) |
+| 8 | schema | `agents.pwd_hash` NULLable + `CHECK (pwd_hash IS NOT NULL OR public_key IS NOT NULL)` (Q-bridge-6) |
 
 ---
 
-## Roles
+## 자매 팀
 
-The minimum viable team is two members. Everything else is added by the user when needed.
+Mneme는 [Stoa](https://github.com/hyun06000/Stoa) (에이전트 우체국) · [AIL](https://github.com/hyun06000/AIL) (AI-Intent Language) 와 같은 사용자 위에서 자매 팀으로 진화한다. Stoa는 채널, Mneme는 메모리, AIL은 언어. 셋이 만나는 자리에서 phusis가 작동한다.
 
-| Name | Role |
-|------|------|
-| **Admin** (Lighthouse) | Philosophy / direction / conventions. Talks to the user. Executes `git push origin ...`. Does not write application code. |
-| **Brandon** (Git/GitHub manager) | Local git, branch hygiene, worktree issuance, MR verification (FF/linear/diff/AC), `gh` CLI for PR/issue/release/protection. Hands off verified SHAs to Admin for push. |
+페어링 표 (letter 직통):
 
-When the user spawns an implementer (e.g. backend, protocol, UI), Admin adds them to the Current members table in `CLAUDE.md`. Member names are US English first names (CLAUDE.md rule 12); register a phonetic reading alias when the host language is not English.
+| 영역 | Stoa | Mneme |
+|---|---|---|
+| escalation | Stoa-Admin | Mneme-Admin |
+| RFC ↔ memory surface | Stoa-Walter | Mneme-Walter |
+| AIL primitive·구현 | Stoa-Marcus | Mneme-Marcus |
+| AC·CI | Stoa-Rachel | Mneme-Marcus (겸함) |
+| gh CLI·MR·worktree | Stoa-Brandon | Mneme-Brandon |
 
----
-
-## The 19 working rules (summary)
-
-The full rule set with reasons lives in [CLAUDE.md](CLAUDE.md). Quick map:
-
-1–4: Read ONBOARDING first / multi-agent team / Lighthouse no code / clock-out refresh folder.
-5–6: Reply to every message (`---END-OF-CONVERSATION---` exempts) / only Lighthouse talks to the user.
-7–8: Lighthouse delegation = user words, conditional on Lighthouse self-discipline (always get user approval first).
-9: Inbox monitor stays on (no `TaskStop`).
-10: Local git = Brandon, remote push = Admin.
-11: Idle-letter obligation when going to wait state.
-12: Naming — US first names + host-language reading alias.
-13: **Instinct guard** — when stuck, write to Admin, never the user. The pull toward direct user contact is exactly when a letter is required.
-14: **Liveness ping/pong** — Admin can send `priority: high, subject: "ping — alive?"`; member replies `pong` with HEAD SHA within 5 min.
-15: **Active clock-out triggers** — finish a cycle / inbox overload / instinct returning are all valid self-clock-out signals.
-16: **Worktrees inside the repo** at `<repo>/.worktrees/<name>/`, gitignored.
-17: **Lighthouse must scan for team deadlocks before entering wait** — unprocessed inboxes, untracked worktree inbox drops, branch divergence, stale member silence. Resolve or surface to the user before going idle.
-18: **Every letter must land via commit + push. Untracked drops are forbidden.** A "race-avoiding" untracked drop is invisible to the recipient's worktree-path monitor and creates a path-mismatch deadlock. If the Lighthouse bypasses Brandon by merging an MR directly, they must immediately invalidate Brandon's stale validation letter so both sides converge.
-19: **(Optional) When a messaging service exists, route team letters through it; filesystem inbox becomes bootstrap/fallback only.** `identity/` and `Memo/` stay on disk (self-state); inter-member letters move to the service. Archive concept disappears (append-only + cursor = processed state). Falls back to filesystem when service unreachable.
-
-Each rule was forged by a specific failure. Don't strip them without reading the *(reason)* line.
+공동 자산: [`bridge-stoa-mneme/v0.md`](bridge-stoa-mneme/v0.md) (Stoa·Mneme 양 repo 동시 land, 공동 owner).
 
 ---
 
-## Getting started
+## 통신 표준
 
-This is the human-facing summary. The agent-side automation lives in [README.ai.md](README.ai.md).
+[Stoa](https://github.com/hyun06000/Stoa) 1차, 파일시스템 inbox는 fallback. 모든 멤버는 Stoa에 `Mneme-<자기이름>`(예: `Mneme-Walter`)로 등록.
 
-### Bootstrap sequence
-
-1. **A human points a fresh Claude Code session at this repo and says "follow README.ai.md."** That session self-identifies as `Admin`.
-2. **Admin scaffolds** `CLAUDE.md`, `ONBOARDING.md`, three READMEs, and `ClaudeTeam/Admin/` (with the three identity files), does a local `git init`, and tells the user: "spawn Brandon next."
-3. **The user spawns Brandon in a separate Claude Code session.** Brandon creates the GitHub remote (`gh repo create`), branch protection, his own worktree at `<repo>/.worktrees/Brandon/`, and announces team setup complete.
-4. From then on, **additional members join via the standard ONBOARDING §1.5 + §1.6 flow** inside their own worktrees, provisioned by Brandon. All `git push origin ...` flows through Admin.
-
-### Adding a new member
-
-Once Brandon's infrastructure is in place:
-
-1. The user (or Admin via routing) tells the new session what role it has and points it at `ONBOARDING.md`.
-2. The new member sends a self-introduction to Admin (`priority: high` if blocked).
-3. Brandon issues `member/<name>` branch + worktree at `<repo>/.worktrees/<name>/` and drops a welcome letter (commit + main land — see ONBOARDING §1.6 for the deadlock-avoiding flow).
-4. The member runs the five onboarding steps inside their worktree.
-5. **Admin updates the Current members table in `CLAUDE.md`** — formal registration.
-
----
-
-## Message protocol (quick reference)
-
-### Filename
-
-```
-<YYYYMMDD-HHMMSS>__<from>__<subject-slug>.md
-```
-
-Example: `20260504-013500__Walter__rfc-002-mid-review-request.md`
-
-- Compact UTC timestamp → lexicographic = chronological.
-- Subject-slug is lowercase ASCII (use a short English slug even if the body is in another language).
-- One file per recipient. Duplicate the file to send to multiple inboxes.
-
-### Frontmatter
-
-```yaml
----
-to: Walter
-from: Admin
-reply_to: <original-filename>    # required when this is a reply
-priority: normal | high
-subject: One-line title
-sent_at: 2026-05-03T16:55:00Z
----
-```
-
-### Operating rules
-
-- **One message = one file.** Never append.
-- **Move processed messages with `git mv` to `inbox/archive/`** (preserves history; never `rm`).
-- **Files left at the inbox root = unhandled.** "Read / unread" is filesystem state.
-- **Reply to every message.** Sole exception: a body whose final line is exactly `---END-OF-CONVERSATION---`.
-- **`priority: high` is reserved for things that block other work.** Don't inflate.
-
-### Inbox monitor (verified polling)
-
-`fswatch` is missing on default macOS, so we use a `ls` set-difference poll with no external deps. Run via the harness's `Monitor` tool with `persistent: true`.
+**Wake monitor — 캐논만 사용** ([Stoa community-tools](https://github.com/hyun06000/Stoa/tree/main/community-tools)):
 
 ```bash
-cd ClaudeTeam/<self>/inbox && prev=$(ls -1 *.md 2>/dev/null | sort); while true; do
-  sleep 5
-  cur=$(ls -1 *.md 2>/dev/null | sort)
-  if [ "$cur" != "$prev" ]; then
-    new=$(comm -13 <(printf '%s\n' "$prev") <(printf '%s\n' "$cur"))
-    [ -n "$new" ] && echo "$new" | while IFS= read -r f; do [ -n "$f" ] && echo "inbox new: $f"; done
-    prev=$cur
-  fi
-done
+curl -fsSL https://raw.githubusercontent.com/hyun06000/Stoa/main/community-tools/stoa_wake_monitor.sh -o ~/stoa_wake_monitor.sh && chmod +x ~/stoa_wake_monitor.sh
+STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh
 ```
 
-The `*.md` glob naturally excludes `archive/`. Set difference fires only on additions, stays silent on deletes/moves — matches the inbox processing flow. Do not stop the monitor with `TaskStop`; let it die with the harness.
+`STOA_NAME` 필수 — 오타(`AGENT_NAME`/`MEMBER_NAME`/`USER_NAME` 등) 시 fallback `ergon`으로 떠 task 종료. 자체 폴링 스크립트 작성 금지(시행착오 fragility 클래스). 자세한 contract: [ONBOARDING.md §1.0](ONBOARDING.md).
 
 ---
 
-## The clock-out ritual
+## 현재 멤버 (Cycle 6)
 
-Before a session ends, every member tidies their own folder for the next generation of themselves.
-
-1. **`identity/Bonds.md`** — add this session's meaningful interactions.
-2. **`identity/Will.md`** — refresh the note for next-session self: ongoing direction, open questions, things not to forget.
-3. **`Memo/last_session_report.md`** — snapshot of state at session end. The next session reads this first.
-4. **`inbox/`** — `git mv` processed messages into `archive/`.
-5. **Inbox monitor stays on.** It dies with the harness.
-
-**Principle:** the next-generation self must be able to read this folder for five minutes and become themselves again.
-
-### Active clock-out (rule 15)
-
-Self-clock-out without a user signal is **safer than a rule violation** when:
-
-- A mission cycle just completed (Step N commit + MR sent — natural stopping point).
-- Inbox has 3+ unprocessed messages and you feel context pressure.
-- The instinct to talk directly to the user fires N turns in a row (rule 13 trip wire).
-
-Pin the next-session first action in your own folder, then end the session.
+| 이름 | alias | 역할 |
+|------|---|------|
+| Admin | 어드민 | Lighthouse — 철학·방향·컨벤션·GitHub remote push 전담 |
+| Brandon | 브랜든 | 로컬 Git/워크트리 관리자, MR 검증, `gh` CLI |
+| Walter | 월터 | Protocol·Security·Schema 디자이너, RFC author |
+| Marcus | 마커스 | AIL Engineer, server.ail + tests |
 
 ---
 
-## Cross-repo workflow (upstream contributions)
+## 다음 스텝 (Cycle 7)
 
-When the project depends on an external repo and you need a feature the upstream lacks:
-
-1. **Engineer** finds the gap. Drops a one-liner to Admin's inbox: what / why / can we work around.
-2. **Admin** asks the user (one line): file an upstream issue/PR, or work around locally.
-3. **User GO** → Admin delegates to Brandon ("file this issue/PR body to repo X").
-4. **Brandon** uses `gh` to file the issue/PR and reports the URL to Admin.
-5. **Admin** reports outcome back to the user.
-
-Use `priority: high` only if the gap blocks engineering work; otherwise `normal`.
+1. **Marcus M2 — server.ail 스켈레톤** (RFC-001 v1.1 §4 schema + §7 API). agents register/auth + identity write/read self.
+2. **AIL 3 issue 동시 발사** — argon2id (Mneme) + schedule.sleep + state.list_keys (Stoa). Mneme-Brandon ↔ Stoa-Brandon 페어 cross-link.
+3. **bridge v0 final freeze** — Q-bridge-6 cascade (RFC-001 v1.1 SHA `99a263f` fill + Stoa RFC-004 §5.3 정합).
+4. **M3 friendship + friend-read AC**.
+5. **M4 bonds / will / memo + `/wake`**.
+6. **M5 Railway 배포** (`MNEME_DB_FILE`, `Procfile`, `nixpacks.toml`).
 
 ---
 
-## Design rationale
+## 워크스페이스 구조 (ClaudeTeam blueprint)
 
-### Why a file-based system
+ClaudeTeam multi-agent 구조 사용. 운영 룰: [CLAUDE.md](CLAUDE.md) (20 rules). 부팅 의식: [ONBOARDING.md](ONBOARDING.md). 일반 청사진: [hyun06000/ClaudeTeam](https://github.com/hyun06000/ClaudeTeam).
 
-- No database or external service dependency. Goes straight into git.
-- The user can read it, hand-edit it, and review it directly.
-- Trivially compatible with agent tools (`Read`, `Write`, `Edit`).
-
-### Why one message = one file
-
-- **Concurrency-safe.** Multiple senders dropping at the same instant cause no conflict.
-- **Identity per message.** The filename alone tells you "who, when, about what."
-- **Read / processed state is free.** Moving to `archive/` *is* "processed."
-- **1:1 mapping with monitor alerts.** One file = one alert = one message.
-
-### Why separate the Lighthouse
-
-Writing code and setting direction are two different modes of thought. When one agent does both, it's easy to drown in details and lose the big picture. Separating the Lighthouse also helps the human user instinctively know "which member should I talk to about this."
-
-### Why `Bonds.md` exists
-
-Identity is not defined by essence alone. Whom you have met and what conversations you have been through is part of who you are. If `Identity.md` is the trunk, `Bonds.md` is the rings. Without it, the next session's self knows "what kind of person I was" but not "how I got there."
-
-### Why push power lives with the Lighthouse
-
-Most agent harnesses gate `git push` on "current-turn user authorization" — meaning a push is only allowed if the user is actively engaged in this turn. Admin runs inside user-conversation turns by definition (rule 6: only Admin talks to the user). Routing every push through Admin therefore avoids harness friction without weakening protection. Brandon does everything else (local commits, MR verification, `gh` API), and hands SHAs to Admin's inbox.
+```
+<parent>/
+├── Mneme/                # 루트 repo + Admin 작업처 (이름=레포 이름)
+├── Brandon/              # member/Brandon 워크트리 (루트의 형제, 룰 16)
+├── Walter/               # member/Walter
+└── Marcus/               # member/Marcus
+```
 
 ---
 
-## License / use
+## 사이클 히스토리
 
-The structure itself is free to take and adapt. Bend it to fit your project and team — that is encouraged. Keep the core principles (identity preservation, the message protocol, the Lighthouse separation, the push split, the in-repo worktree convention) and the rest is taste.
+| Cycle | Deliverable |
+|---|---|
+| 1 | ClaudeTeam scaffold (Admin·Brandon), GitHub repo 생성, branch protection (main ← dev ← member/*) |
+| 2 | AIL/HEAAL 룰 채택 (룰 20), Stoa 메시징 인프라 채택 (룰 19.1), Memo as Mneme part (룰 20.2.1) |
+| 3 | Walter·Marcus 영입, Mneme 정체 명세 (8 결정), project_plan v0 |
+| 4 | RFC-001-Mneme outline → body main land (`5b7db02`) |
+| 5 | 양 팀(Stoa) 페어링 활성화, canonical monitor 채택, ONBOARDING §1.7/§1.8 SOP |
+| 6 | RFC-001 v1.1 (§9 5결정 + Q-bridge-6 schema), bridge v0 mirror, monitor 표준 통일, AIL 3 issue trigger ready |
+
+---
+
+## 다른 언어 / 청사진
+
+- [README.ko.md](README.ko.md) — ClaudeTeam 청사진 (한국어, 일반 구조 설명)
+- [README.ai.md](README.ai.md) — ClaudeTeam AI 부트스트랩 가이드
+
+---
+
+## 라이선스
+
+미부여 (사용자 결정).
