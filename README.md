@@ -12,7 +12,7 @@
 
 | | |
 |---|---|
-| **Status** | Cycle 7 active — Rule 21 (AIL doctrine mirror) + RFC-001 §11.4 cross-ref main land (`7a73766`). M2 server.ail Phase A 진입 중. |
+| **Status** | Cycle 9 entry — doctrine(stoa) envelope schema 명시 + wake interval default 3→15 (`a8be15f`, issue #10 회수). M2 Phase A live (`520a2f6`), Phase B 위임 자리. |
 | **Spec** | [`docs/rfc-001-identity-vault.md`](docs/rfc-001-identity-vault.md) (v1.1, §11.4 cross-ref) |
 | **언어** | [AIL](https://github.com/hyun06000/AIL) 전용 (HEAAL 준수, 룰 20·21) |
 | **메시징** | [Stoa](https://github.com/hyun06000/Stoa) 1차, 파일시스템 fallback (룰 19) |
@@ -79,7 +79,7 @@ STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh
 
 ---
 
-## 현재 멤버 (Cycle 7)
+## 현재 멤버 (Cycle 9)
 
 | 이름 | alias | 역할 |
 |------|---|------|
@@ -90,15 +90,14 @@ STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh
 
 ---
 
-## 다음 스텝 (Cycle 7+)
+## 다음 스텝 (Cycle 9+)
 
-1. **Marcus M2 — server.ail Phase A** (RFC-001 v1.1 §4 schema + §7 API). agents register/auth + identity write/read self. *(진행 중)*
-2. **AIL v1.72.0 cut trigger** — schedule.sleep + state.list_keys 양 effect는 AIL `dev 48d404d` land 완료. Mneme 측 *production import* 도달이 v1.72.0 PyPI cut trigger 신호 (룰 21 D4 substrate gate).
-3. **AIL #8 argon2id** — Mneme 발의, Telos 영역. RFC-001 v1.1 §11.1 password hashing 의존.
-4. **bridge v0 final freeze** — Q-bridge-6 cascade (Stoa-Walter trip 결과 후). Q-bridge-3 cross-ref(`50a988c`) main land 완료.
-5. **M3 friendship + friend-read AC**.
-6. **M4 bonds / will / memo + `/wake`**.
-7. **M5 Railway 배포** (`MNEME_DB_FILE`, `Procfile`, `nixpacks.toml`).
+1. **Marcus M2 Phase B** — identity write/read self + `/wake` long-poll (AIL v1.72.2 `schedule.every` in `evolve` + `state.list_keys`). 본 production import 도달이 v1.72.2 substrate gate 신호 (룰 21 D4).
+2. **AIL #8 argon2id** — Mneme 발의, Telos 영역. RFC-001 v1.2 §11.1 password hashing 의존.
+3. **bridge v0 final freeze** — Q-bridge-6 cascade (Stoa-Walter trip 결과 후).
+4. **M3 friendship + friend-read AC**.
+5. **M4 bonds / will / memo + `/wake`**.
+6. **M5 Railway 배포** (`MNEME_DB_FILE`, `Procfile`, `nixpacks.toml`).
 
 ---
 
@@ -127,6 +126,8 @@ ClaudeTeam multi-agent 구조 사용. 운영 룰: [CLAUDE.md](CLAUDE.md) (21 rul
 | 5 | 양 팀(Stoa) 페어링 활성화, canonical monitor 채택, ONBOARDING §1.7/§1.8 SOP |
 | 6 | RFC-001 v1.1 (§9 5결정 + Q-bridge-6 schema), bridge v0 mirror, monitor 표준 통일, AIL 3 issue trigger ready |
 | 7 | 3-team mission framing 정합 (Mneme=완성/Stoa=Phusis化/AIL=지원), 위임 토큰 확장(룰 8 자기규율 완화), AIL doctrine D4·D5·D6 mirror(룰 21), Q-bridge-3 cross-ref(`50a988c`) main land, AIL #7+#9 dev land(`48d404d`), v1.72.0 cut trigger 대기 |
+| 8 | M2 Phase A server.ail scaffold land (`520a2f6`), wind-down 4-step doctrine mirror PR #9 (룰 4 + ONBOARDING §5.0), Walter RFC-001 v1.2 friendship 확장 + follow-up PR #7·#8 land. AIL v1.72.0/1/2 양 팀 substrate, Stoa Phase B autonomous loop live. Mneme 측 Phase B 진입 0 (정체) |
+| 9 | doctrine(stoa) envelope schema 명시 + wake interval default 3→15 (issue #10 회수, `a8be15f`). 박상현 '전원 퇴근' fast-track land — Brandon MR validate 우회, 룰 18 stale 정정 패턴 |
 
 ---
 

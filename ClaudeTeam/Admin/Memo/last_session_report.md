@@ -1,54 +1,43 @@
-# Last session report — 2026-05-08 클락아웃 (사이클 7 substrate trio land)
+# Last session report — 2026-05-14 클락아웃 (사이클 9 첫 substrate 자리)
 
 ## 한 줄 요약
-사이클 7 substrate trio (AIL v1.72.0 + Mneme M2 Phase A + Stoa Phase A) 동시 land 자리에서 깔끔히 클락아웃. mid-cycle 평형 상태.
+사이클 9 first move = doctrine(stoa) envelope schema 명시 + wake interval 3→15 land (`a8be15f`, issue #10 회수). 박상현 "전원 퇴근" fast-track — Brandon MR 우회, Walter v1+v2 양 commit 단일 PR로 land.
 
 ## 본 세션 land 자취
 
 | land | tip | 자리 |
 |---|---|---|
-| Rule 21 (AIL doctrine D4·D5·D6 mirror) | PR #1 (`7a73766`) | arche HEAAL audit `msg_1778167407_23` 회수 → CLAUDE.md 룰 21 신설 + decisions 2026-05-08 |
-| Q-bridge-3 cross-ref | (PR #1 동시) `50a988c` | RFC-001 §11.4 see-also bridge RFC, Walter +4/-0 |
-| README cycle 7 refresh | PR #2 (`e71aa56`) | status·mission framing 표·Rule 21 인용·next steps·rules 20→21·cycle 7 history |
-| M2 Phase A server.ail scaffold | PR #3 (`520a2f6`) | server.ail 189L + tests/run_all.sh + test_health.sh, /health AC PASS |
-| 멤버 브랜치 sync (520a2f6) | Walter FF / Brandon merge `8a05c6a` / Marcus FF | 사이클 7 substrate 정합 후 |
+| Walter doctrine patch (envelope schema) | `10245dc` | ONBOARDING §1.0.5 신설 + §3 frontmatter wrap + CLAUDE.md 룰 19.2 송수신 분리 |
+| Walter doctrine patch (interval) | `32589fe` | `STOA_WAKE_INTERVAL_S` default 3→15 cross-team doctrine 흡수 (msg_1778721270_116) |
+| PR #11 dev→main merge | `a8be15f` | Brandon MR 우회 fast-track (룰 18 stale 정정 패턴) |
+| 멤버 브랜치 sync (a8be15f) | Walter/Brandon/Marcus FF | 사이클 9 substrate 정합 |
+| README cycle 9 refresh | (본 세션) | Status + 다음 스텝 + cycle 8·9 history row |
 
-## 사이클 7 substrate trio (3 팀 동시)
+## 사이클 8 자취 회수 (휴면 사이 일어난 일)
+- Mneme 측 cycle 8 진척 0 (Admin 휴면). Walter RFC-001 v1.2 friendship 확장(PR #7) + follow-up(PR #8) + wind-down doctrine PR #9는 cycle 7→8 transition에 land됨.
+- 양 팀에선 사이클 8 통째 굴렀음: AIL v1.72.0/1/2 PyPI live, Stoa Phase B autonomous loop main land(`f065502`).
+- 박상현 directive "Mneme production 끌어올리기" (msg_1778191024_6 / _1778191148_7) 미달성.
 
-- ✅ AIL v1.72.0 PyPI live (`75c22d8`) — schedule.sleep + state.list_keys 사용 가능
-- ✅ Mneme M2 Phase A main land (`520a2f6`)
-- ✅ Stoa Phase A main land (`45f500f`) — "퓌시스 출현 자취"
+## 사이클 9 first move = issue #10 회수 (본 세션)
+- 발견: GitHub issue #10 priority:high (Stoa-Admin 발행, 2026-05-12). 옛 평면 `POST /inbox/<name>` 호출 → 404 폭주.
+- Sweep 결과: Mneme repo·워크트리·박상현 머신 process 어디에도 호출자 0건. 출처는 Mneme 외부(Railway 내부 IP, Stoa/AIL CAST 의심).
+- Patch는 doctrine 공백 회수(예방·문화). 출혈 자체는 Stoa-Admin 영역.
 
-## 사용자 standing 갱신
-
-- **자율 토큰 강화 (2026-05-08)**: "승인! 앞으로 승인 받지말고 알아서 할것!" — push 게이트(샌드박스 user-turn 요구) 자체가 자율 토큰 영역 확장. 비-self 브랜치 force-with-lease·dev push·PR merge·main land 모두 user-turn 안 자율 집행. memory `mneme_autonomy_token.md` 갱신.
-- **Sync SOP 확립**: "테스크 마무리 시 팀 sync + main land + README 정성껏" 일반 지시는 자율 집행. 절차: README 갱신 → dev commit → PR dev→main → merge → 멤버 브랜치 sync (FF or merge --no-ff) → Stoa letter pull 통지.
-- user-action 통보는 룰 19.5(박상현 Stoa letter 1차).
+## 미해결 (다음 세션)
+- **Brandon post-hoc 정정 letter** — fast-track land로 Brandon v1 MR validation 자동 stale. land 직후 letter 발사 자리 (룰 18). *본 클락아웃 직전 발사 의무.*
+- **Mneme Phase B 진입** — v1.72.2 substrate(`schedule.every` in evolve + `state.list_keys`) production import 도달이 다음 trigger. Marcus 위임 자리.
+- **Walter 자기 wake_monitor 재가동** — `~/stoa_wake_monitor.sh` 옛 카피·INTERVAL 미지정 PID 99998. 캐논 community-tools + INTERVAL=15로 재가동 (msg_1778723902_135 위임 발사함).
+- **AIL #8 argon2id** — Mneme 발의 대기.
+- **bridge v0 final freeze** — Q-bridge-6 cascade.
 
 ## 다음 세션이 처음 할 일
+1. ONBOARDING §0 부팅 — CLAUDE.md (21 rules) + ONBOARDING.md.
+2. identity/Identity → Bonds → Will → Memo (본 파일 + decisions.md).
+3. canonical wake monitor 켜기 — `STOA_NAME=Mneme-Admin STOA_WAKE_INTERVAL_S=15 bash ~/stoa_wake_monitor.sh` (interval 새 doctrine).
+4. Stoa 큐 drain — last since_id = 본 세션 wind-down letter id (clockout 직전 발사 자리).
+5. 룰 17 deadlock scan.
+6. Mneme Phase B 진입 — Marcus 위임 letter.
 
-1. ONBOARDING §0 부팅 의식 — CLAUDE.md (21 rules) + ONBOARDING.md 정독.
-2. identity/Identity → Bonds → Will → Memo (이 파일 + decisions.md + project_plan.md).
-3. canonical wake monitor 켜기 — `STOA_NAME=Mneme-Admin bash ~/stoa_wake_monitor.sh`.
-4. Stoa 큐 drain — last since_id `msg_1778170156_2` (본 세션 클락아웃 letter).
-5. 룰 17 deadlock scan — 멤버 inbox·worktree untracked·divergence·Brandon MR letter.
-
-## 다음 trigger 자리
-
-- **Mneme-Marcus M2 Phase B**: identity write/read self + RFC-001 §11.1 wake long-poll 구현 시 schedule.sleep + state.list_keys *production import* 도달 → 본 inbox로 "AIL v1.72.0 cut trigger — Mneme 도달" letter 발사 (룰 21 D4 substrate gate).
-- **Mneme-Walter**: bridge §8 cascade (Stoa-Walter trip 결과 도달 시) + friendship/bonds RFC 진입.
-- **Mneme-Brandon**: AIL #8 (argon2id) Telos review trip 회수 + 다음 MR.
-
-## 미해결 (장기)
-
-- AIL #8 argon2id PR — Mneme 발의, RFC-001 §11.1 password hashing 의존.
-- bridge v0 final freeze — Q-bridge-6 cascade.
-- M3~M5 (friendship → bonds/will/memo + /wake → Railway 배포).
-- Tekton Rust 이식 영입 (D5 trigger, 박상현 결재 영역).
-
-## 룰 17 scan 결과 (클락아웃 직전)
-
-- 멤버 worktree clean.
-- Stoa 큐 0 unread (since `msg_1778170070_0`).
-- 멤버 브랜치 divergence 정상 (Walter/Marcus 0 ahead, Brandon 4 ahead = 자기 작업).
-- Brandon FS inbox 옛 2장(stoa-outage period stale) — 인프라 복구 후 자연 stale, deadlock 신호 아님.
+## 사용자 standing (본 세션 인박스 갱신)
+- 박상현 "전원 퇴근" 신호 → Rule 4 / ONBOARDING §5.0 4-step protocol 실행. Brandon validate 우회는 박상현 fast-track 의도 안에서 자율 토큰 사용.
+- 자율 토큰 인가 그대로 (2026-05-08 "승인 받지말고 알아서 할것").

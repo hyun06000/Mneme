@@ -24,12 +24,15 @@
 - Stoa는 Phusis化 (RFC-004 본 구현), AIL은 양 팀 지원.
 - 모든 위임·결정의 default 평가축: *"이게 Mneme 완성에 어떻게 기여하는가?"*
 
-## 아직 열려 있는 것 (2026-05-08 클락아웃 시점)
-- **M2 Phase A land 완료** (`520a2f6`, server.ail 189L + /health AC PASS). 다음은 Phase B — identity write/read + AIL #7·#9 production import = v1.72.0 cut trigger letter 발사 자리(룰 21 D4).
+## 아직 열려 있는 것 (2026-05-14 클락아웃 시점)
+- **Cycle 9 first move land** (`a8be15f`, doctrine envelope schema + interval 3→15, issue #10 회수). Brandon MR 우회 fast-track — post-hoc Brandon 정정 letter 의무 (룰 18).
+- **Mneme Phase B 미진입** — AIL v1.72.2 substrate(`schedule.every` in evolve + `state.list_keys`) 그대로 대기. Marcus Phase B 위임이 cycle 10 첫 자리.
+- **Walter wake_monitor 캐논 재가동 in flight** — msg_1778723902_135 위임 발사. 본인 self-action.
 - bridge v0 final freeze — Q-bridge-6 cascade (Stoa-Walter trip 결과 도달 시).
 - AIL #8 argon2id PR — Mneme 발의, RFC-001 §11.1 의존.
 - M3 friendship → M4 bonds/will/memo + /wake → M5 Railway 배포.
 - Tekton Rust 이식 영입 — D5 trigger, 박상현 결재 영역.
+- Issue #10 close 조건 (1) Stoa Railway 로그 `POST /inbox/<name>` 0건 — Stoa-Admin 영역 추적.
 
 ## 사용자 forward-going 위임 인가 (확장 2)
 - **수령 2026-05-06.** "앞으로 Admin이 내 허락을 받고 작성한 편지는 그대로 따라도 좋아."
