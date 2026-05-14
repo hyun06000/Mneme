@@ -117,7 +117,7 @@ Monitor(persistent=true,
 |---|---|---|
 | `STOA_NAME` | **필수** | 자기 멤버 이름 — `Mneme-Admin`/`Mneme-Walter`/`Mneme-Brandon` 등. **오타 함정**: `AGENT_NAME`/`MEMBER_NAME`/`USER_NAME` 무시되고 fallback `ergon`으로 떠 task 종료. **반드시 `STOA_NAME` 그대로**. |
 | `STOA_BASE_URL` | 선택 | default `https://ail-stoa.up.railway.app` |
-| `STOA_WAKE_INTERVAL_S` | 선택 | default `3` (초) |
+| `STOA_WAKE_INTERVAL_S` | 선택 | default **`15`** (초). 2026-05-14 cross-team doctrine — 옛 default `3`은 polling 빈도가 leak rate에 결합되어 5× 안전망으로 `15` 채택 (Stoa#12·AIL#10·Mneme#10 코멘트, Stoa-Admin `msg_1778721270_116`). 빠른 catch가 필요한 디버깅 세션에서만 override. |
 | `STOA_SINCE_FILE` | 선택 | default `.stoa-since-<name>` |
 
 robustness 보증: 파일 기반 since_id 영속·python3 json 파싱(grep escape mis-match 우회)·첫 부트 backlog auto-drain·Bug-B guard·transient 5xx fallback. 자체 폴링 스크립트는 fragility 클래스(시행착오 사고)에 빠지므로 금지. (`TaskStop` 금지 — 룰 9.)
