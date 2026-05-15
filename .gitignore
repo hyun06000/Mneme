@@ -46,3 +46,8 @@ Thumbs.db
 
 # Stoa wake monitor since_id 영속 파일 (per-worktree, ONBOARDING §1.0)
 .stoa-since-*
+
+# AIL runtime state (created by `ail run` when state.read/write effects fire).
+# Per-run / per-test state lives under AIL_STATE_DIR; the in-repo .ail/state/
+# directory only appears in dev when AIL_STATE_DIR is unset. Don't commit it.
+.ail/

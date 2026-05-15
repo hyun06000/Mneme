@@ -32,6 +32,7 @@ echo "→ port: $PORT"
 PYTHONUNBUFFERED=1 \
 PORT="$PORT" \
 MNEME_DB_FILE="$TMP/mneme.db" \
+AIL_STATE_DIR="$TMP/state" \
     ail run "$ROOT_DIR/server.ail" > "$TMP/server.log" 2>&1 &
 SERVER_PID=$!
 
