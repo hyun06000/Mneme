@@ -24,15 +24,23 @@
 - Stoa는 Phusis化 (RFC-004 본 구현), AIL은 양 팀 지원.
 - 모든 위임·결정의 default 평가축: *"이게 Mneme 완성에 어떻게 기여하는가?"*
 
-## 아직 열려 있는 것 (2026-05-14 클락아웃 시점)
-- **Cycle 9 first move land** (`a8be15f`, doctrine envelope schema + interval 3→15, issue #10 회수). Brandon MR 우회 fast-track — post-hoc Brandon 정정 letter 의무 (룰 18).
-- **Mneme Phase B 미진입** — AIL v1.72.2 substrate(`schedule.every` in evolve + `state.list_keys`) 그대로 대기. Marcus Phase B 위임이 cycle 10 첫 자리.
-- **Walter wake_monitor 캐논 재가동 in flight** — msg_1778723902_135 위임 발사. 본인 self-action.
-- bridge v0 final freeze — Q-bridge-6 cascade (Stoa-Walter trip 결과 도달 시).
-- AIL #8 argon2id PR — Mneme 발의, RFC-001 §11.1 의존.
-- M3 friendship → M4 bonds/will/memo + /wake → M5 Railway 배포.
-- Tekton Rust 이식 영입 — D5 trigger, 박상현 결재 영역.
-- Issue #10 close 조건 (1) Stoa Railway 로그 `POST /inbox/<name>` 0건 — Stoa-Admin 영역 추적.
+## 아직 열려 있는 것 (2026-05-22 클락아웃 시점, 사이클 10 close)
+- **사이클 11 entry 5 자리**:
+  - Marcus Phase B Step 3 (friendship + friend-read) — Walter spec consult 자유.
+  - RFC-003 v0.1 → v1.0 freeze MR — Walter, Stoa-Walter ACK 위에서 자유.
+  - AIL #29 trip 자취 — AIL CAST 자기 판단, land 시 cycle anchor fold.
+  - doctrine 5건 land (본 cycle 직접 학습) — ONBOARDING/CLAUDE.md patch.
+  - M5 Railway 배포 자리 (Phase B 안정화 후).
+- **doctrine 5건 후보** (cycle 11 첫 자리 land):
+  1. letter aspirational vs ps eww fact 갭 — 모든 fact-claim self-verify 의무.
+  2. 부팅 큐 drain 의무 강화 — ONBOARDING §0 step 5 "처리 완료까지 closer 금지".
+  3. ping/pong 정기화 — Admin idle 검출 자기 함수.
+  4. closer-while-waiting fatal — 외부 letter 대기 자리는 closer 금지.
+  5. monitor since_id silent fail — clock-in 전 `cat .stoa-since-<name>` + 직접 curl fact-check.
+- **캐논 sync** — `community-tools/stoa_wake_monitor.sh` byte-identical 자리 sandbox 거부. env override로 운영 정합 그대로 — 박상현 결재 자유 자리 (`/permissions` slash command 또는 manual write).
+- **bridge v0 final freeze** — Q-bridge-6 cascade (Stoa-Walter trip).
+- **Tekton Rust 이식** — D5 trigger, 박상현 결재 영역.
+- **Issue #10** — Stoa Railway 로그 `POST /inbox/<name>` 0건 자취 (Stoa-Admin 측 4차 회수 `bc94472` + arche kill 자취로 봉인 추정).
 
 ## 사용자 forward-going 위임 인가 (확장 2)
 - **수령 2026-05-06.** "앞으로 Admin이 내 허락을 받고 작성한 편지는 그대로 따라도 좋아."
