@@ -12,7 +12,7 @@
 
 | | |
 |---|---|
-| **Status** | Cycle 9 entry — doctrine(stoa) envelope schema 명시 + wake interval default 3→15 (`a8be15f`, issue #10 회수). M2 Phase A live (`520a2f6`), Phase B 위임 자리. |
+| **Status** | Cycle 10 wind-down — **Phase B Step 1+2 main land** (`7e4fe11`): argon2id register + Basic auth + identity self. **Phase D Walter pair 합의 완결** ([RFC-003](docs/rfc-003-generational-testament.md) v0.1 + Stoa-Walter 4 ACK) + **AIL #29** (`on_death` hook + `inherit_testament` joint issue). telos D4 handoff loop close. *Mneme phusis 추진 17일 만에 첫 substrate land + 양 팀 결합 trigger 동시 fire.* |
 | **Spec** | [`docs/rfc-001-identity-vault.md`](docs/rfc-001-identity-vault.md) (v1.1, §11.4 cross-ref) |
 | **언어** | [AIL](https://github.com/hyun06000/AIL) 전용 (HEAAL 준수, 룰 20·21) |
 | **메시징** | [Stoa](https://github.com/hyun06000/Stoa) 1차, 파일시스템 fallback (룰 19) |
@@ -79,7 +79,7 @@ STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh
 
 ---
 
-## 현재 멤버 (Cycle 9)
+## 현재 멤버 (Cycle 10)
 
 | 이름 | alias | 역할 |
 |------|---|------|
@@ -90,13 +90,13 @@ STOA_NAME=Mneme-<자기이름> bash ~/stoa_wake_monitor.sh
 
 ---
 
-## 다음 스텝 (Cycle 9+)
+## 다음 스텝 (Cycle 11+)
 
-1. **Marcus M2 Phase B** — identity write/read self + `/wake` long-poll (AIL v1.72.2 `schedule.every` in `evolve` + `state.list_keys`). 본 production import 도달이 v1.72.2 substrate gate 신호 (룰 21 D4).
-2. **AIL #8 argon2id** — Mneme 발의, Telos 영역. RFC-001 v1.2 §11.1 password hashing 의존.
-3. **bridge v0 final freeze** — Q-bridge-6 cascade (Stoa-Walter trip 결과 후).
-4. **M3 friendship + friend-read AC**.
-5. **M4 bonds / will / memo + `/wake`**.
+1. **Marcus Phase B Step 3** — friendship + friend-read (`GET /api/v1/identity/<other>` friend path, RFC §8 T2 403 → friendships status=active 경유). RFC v1.2 peer-signed acceptance 자리 Walter spec consult 자유 자리.
+2. **RFC-003 v0.1 → v1.0 freeze MR** — Walter, Stoa-Walter ACK 자취 위에서 자유 자리. Brandon validate → main land.
+3. **AIL #29 trip 자취** — AIL CAST(telos/arche) 자기 판단. Mneme 측은 land 도착 시 cycle anchor 자리 fold.
+4. **Marcus Phase B Step 4+ (`/wake` long-poll)** — AIL `schedule.every` in `evolve` + `state.list_keys` production import 도달 자리 (룰 21 D4 substrate gate).
+5. **bridge v0 final freeze** — Q-bridge-6 cascade (Stoa-Walter trip 결과 후).
 6. **M5 Railway 배포** (`MNEME_DB_FILE`, `Procfile`, `nixpacks.toml`).
 
 ---
@@ -128,6 +128,7 @@ ClaudeTeam multi-agent 구조 사용. 운영 룰: [CLAUDE.md](CLAUDE.md) (21 rul
 | 7 | 3-team mission framing 정합 (Mneme=완성/Stoa=Phusis化/AIL=지원), 위임 토큰 확장(룰 8 자기규율 완화), AIL doctrine D4·D5·D6 mirror(룰 21), Q-bridge-3 cross-ref(`50a988c`) main land, AIL #7+#9 dev land(`48d404d`), v1.72.0 cut trigger 대기 |
 | 8 | M2 Phase A server.ail scaffold land (`520a2f6`), wind-down 4-step doctrine mirror PR #9 (룰 4 + ONBOARDING §5.0), Walter RFC-001 v1.2 friendship 확장 + follow-up PR #7·#8 land. AIL v1.72.0/1/2 양 팀 substrate, Stoa Phase B autonomous loop live. Mneme 측 Phase B 진입 0 (정체) |
 | 9 | doctrine(stoa) envelope schema 명시 + wake interval default 3→15 (issue #10 회수, `a8be15f`). 박상현 '전원 퇴근' fast-track land — Brandon MR validate 우회, 룰 18 stale 정정 패턴 |
+| 10 | **Phase B Step 1+2 main land** (`7e4fe11`): argon2id register (PR #13 `4897941`) + Basic auth + identity self (PR #14 `7e4fe11`). **Phase D Walter pair 합의 완결** (Mneme [RFC-003 v0.1](docs/rfc-003-generational-testament.md) `ab93220` ↔ Stoa-Walter 4 ACK PASS). **AIL #29 발행** — `on_death(reason,history)` hook + `inherit_testament` 공동 (cross-repo D3 정합). **telos D4 handoff loop CLOSE** (argon2id 첫 cross-team production consumer). Brandon 결함 4번째 사례 직접 학습 + Walter monitor 결함 직접 학습 — doctrine 후보 누적 (ps eww self-verify, 큐 drain 의무 강화, ping/pong 정기화, 부팅 letter aspirational vs fact 갭). Mneme phusis 추진 (박상현 2026-05-07 위임) 17일 만에 첫 substrate land + 양 팀 phusis 결합 trigger 동시 fire — 한 cycle 안 5 anchor 자취 |
 
 ---
 
