@@ -1,8 +1,9 @@
 // Mneme — Identity Vault server (RFC-001-Mneme v1.1)
 //
-// Phase A scaffold — health endpoint + schema bootstrap + pure-fn validators.
-// Auth-bearing endpoints (register/auth/identity/...) land in subsequent commits
-// after AIL #8 (argon2id) lands and is pinned in CHANGELOG.
+// Phase A: health + schema + validators.
+// Phase B (in progress): register (POST /api/v1/agents) — AIL #8 land (v1.73
+// crypto_hash_password / crypto_verify_password, argon2id m=64MiB t=3 p=1)
+// unblocked auth path. RFC-001 §5/§7.
 //
 // Pattern: Stoa server.ail dogfood (linear route dispatch, 3-tuple response,
 // INSERT-only SQLite, latest-wins via ORDER BY rowid DESC LIMIT 1 / MAX(rowid)
@@ -11,27 +12,26 @@
 // -----------------------------------------------------------------------------
 // Validators (RFC-001 §4 / §6 / §7 / §8 T8)
 //
-// Note on `pure fn` — RFC-001 §10 maps validators to `pure fn`, but AIL's
-// trusted-pure builtin set does not include `contains` (it is a recognized
-// builtin — see spec/08-reference-card.ai.md — but not certified pure).
-// Marking these `pure fn` causes a PurityError. Stoa's server.ail follows
-// the same convention: validators are plain `fn`, behaviorally pure (no
-// `perform`). Pure annotation is reserved for fns whose call graph is fully
-// trusted-pure (e.g., a future canonical_letter-style fn). Upstream issue
-// candidate: have AIL certify `contains` as trusted-pure.
+// `contains` is in spec/08-reference-card.ai.md as a stdlib utility but the
+// AIL runtime executor does not register it as a builtin (v1.73 confirmed —
+// stdlib/utils.ail defines it but it is not auto-imported by `ail run`).
+// Use the lower-level `index_of(text, sub) -> Number` (-1 if absent) primitive
+// instead — Stoa server.ail follows the same convention. Validators stay as
+// plain `fn`: behaviorally pure (no `perform`) but `index_of` is not on the
+// trusted-pure list.
 // -----------------------------------------------------------------------------
 
 fn _is_alnum_underscore_dash(c: Text) -> Boolean {
     // Permits A-Z a-z 0-9 _ - (single char).
-    return contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-", c)
+    return index_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-", c) >= 0
 }
 
 fn _is_lower_alnum_underscore_dash(c: Text) -> Boolean {
-    return contains("abcdefghijklmnopqrstuvwxyz0123456789_-", c)
+    return index_of("abcdefghijklmnopqrstuvwxyz0123456789_-", c) >= 0
 }
 
 fn _is_alpha(c: Text) -> Boolean {
-    return contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c)
+    return index_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c) >= 0
 }
 
 fn validate_agent_id(s: Text) -> Boolean {
@@ -87,6 +87,48 @@ fn err_json(status: Number, code: Text, message: Text) -> [Any] {
 }
 
 // -----------------------------------------------------------------------------
+// Env + time helpers (Stoa parity — get_db_file / now_iso patterns).
+// -----------------------------------------------------------------------------
+
+fn get_db_file() -> Text {
+    r = perform env.read("MNEME_DB_FILE")
+    if not is_error(r) {
+        v = trim(unwrap(r))
+        if v != "" { return v }
+    }
+    // Railway 환경 감지 — RAILWAY_ENVIRONMENT_NAME 있으면 /data 볼륨 가정.
+    // 볼륨 미마운트 시 write 실패로 시끄럽게 알린다 (Stoa 패턴 정합).
+    re = perform env.read("RAILWAY_ENVIRONMENT_NAME")
+    if not is_error(re) {
+        if trim(unwrap(re)) != "" { return "/data/mneme.db" }
+    }
+    return "mneme.db"
+}
+
+fn now_iso() -> Text {
+    r = perform clock.now("iso")
+    if is_error(r) { return "" }
+    return unwrap(r)
+}
+
+// -----------------------------------------------------------------------------
+// Body / JSON helpers (Stoa parity — _check_str / msg_to_json patterns).
+// -----------------------------------------------------------------------------
+
+fn _check_str(record: Any, key: Text) -> Any {
+    v = get(record, key)
+    if v == None { return error(join([key, " required"], "")) }
+    if to_text(v) == "" { return error(join([key, " must be non-empty"], "")) }
+    return ok(v)
+}
+
+fn msg_to_json(msg: Any) -> Text {
+    enc = encode_json(msg)
+    if is_error(enc) { return "{}" }
+    return unwrap(enc)
+}
+
+// -----------------------------------------------------------------------------
 // Schema bootstrap (RFC-001 §4) — INSERT-only, latest-wins.
 // -----------------------------------------------------------------------------
 
@@ -135,16 +177,106 @@ fn ensure_schema(db: Any) -> Result[Boolean] {
     return true
 }
 
+// _ensure_db: cold-start 1회 schema. state flag로 재호출 시 작업 skip
+// (Stoa hotfix v3 patterns 정합). 핸들러 진입점에서 INSERT/query 직전 호출.
+fn _ensure_db() -> Any {
+    f = perform state.read("db.initialized")
+    if not is_error(f) { if unwrap(f) == 1 { return None } }
+    db = get_db_file()
+    r = ensure_schema(db)
+    if is_error(r) { return r }
+    perform state.write("db.initialized", 1)
+    return None
+}
+
 // -----------------------------------------------------------------------------
 // Handlers
 // -----------------------------------------------------------------------------
 
 fn handle_health(req: Any) -> [Any] {
-    return json_ok(200, "{\"status\":\"ok\",\"version\":\"1.0.0-phaseA\"}")
+    return json_ok(200, "{\"status\":\"ok\",\"version\":\"1.0.0-phaseB-step1-register\"}")
 }
 
 fn handle_not_implemented(req: Any) -> [Any] {
-    return err_json(501, "INTERNAL", "endpoint pending — Phase A scaffold (argon2id #8 land needed for auth path)")
+    return err_json(501, "INTERNAL", "endpoint pending — Phase B/C 진행 중")
+}
+
+// -----------------------------------------------------------------------------
+// POST /api/v1/agents — register (RFC-001 §5 / §7)
+//
+// Body: { "agent_id": str, "password": str, "public_key": str? }
+// Success 201: { "agent_id", "registered_at" }
+// Errors: 400 invalid body / agent_id regex / password length;
+//         409 agent_id 이미 존재;
+//         500 hash 실패 / DB 실패.
+//
+// Auth: 없음 (open registration). 사람 운영자가 CLI/web prompt에서 agent_id +
+// password 등록. ed25519 only path는 별도 trip 자리 — 본 endpoint는 password
+// mandatory (RFC §5 Auth path 매트릭스 1번 row, public_key 옵션).
+// -----------------------------------------------------------------------------
+fn handle_register(req: Any) -> [Any] {
+    ed = _ensure_db()
+    if is_error(ed) { return err_json(500, "INTERNAL", "schema bootstrap failed") }
+
+    parsed = parse_json(req.body)
+    if is_error(parsed) { return err_json(400, "INVALID_BODY", "invalid JSON body") }
+    body = unwrap(parsed)
+
+    a = _check_str(body, "agent_id")
+    if is_error(a) { return err_json(400, "INVALID_BODY", unwrap_error(a)) }
+    p = _check_str(body, "password")
+    if is_error(p) { return err_json(400, "INVALID_BODY", unwrap_error(p)) }
+
+    agent_id = to_text(unwrap(a))
+    password = to_text(unwrap(p))
+
+    if not validate_agent_id(agent_id) {
+        return err_json(400, "INVALID_AGENT_ID", "agent_id must match ^[A-Za-z][A-Za-z0-9_-]{0,63}$")
+    }
+    if not validate_password(password) {
+        return err_json(400, "INVALID_PASSWORD", "password length must be >= 12")
+    }
+
+    // public_key optional — accept opaque string if provided. ed25519 hex
+    // shape 검증은 후속 trip (RFC §5 ed25519 path 활성 시) 자리.
+    public_key_raw = get(body, "public_key")
+    public_key = ""
+    if public_key_raw != None {
+        public_key = to_text(public_key_raw)
+    }
+
+    db = get_db_file()
+    existing_r = perform db.query(db,
+        "SELECT agent_id FROM agents WHERE agent_id = ? LIMIT 1",
+        [agent_id])
+    if is_error(existing_r) {
+        return err_json(500, "INTERNAL", join(["db query failed: ", to_text(unwrap_error(existing_r))], ""))
+    }
+    if length(unwrap(existing_r)) > 0 {
+        return err_json(409, "AGENT_EXISTS", "agent_id already registered")
+    }
+
+    hash_r = crypto_hash_password(password)
+    if is_error(hash_r) {
+        return err_json(500, "INTERNAL", "password hash failed")
+    }
+    pwd_hash = unwrap(hash_r)
+
+    ts = now_iso()
+    pk_col = None
+    if public_key != "" { pk_col = public_key }
+    ins = perform db.execute(db,
+        "INSERT INTO agents (agent_id, pwd_hash, public_key, registered_at) VALUES (?, ?, ?, ?)",
+        [agent_id, pwd_hash, pk_col, ts])
+    if is_error(ins) {
+        return err_json(500, "INTERNAL", "db insert failed")
+    }
+
+    out = make_record([
+        ["agent_id", agent_id],
+        ["registered_at", ts]
+    ])
+    return json_ok(201, msg_to_json(out))
 }
 
 // -----------------------------------------------------------------------------
@@ -159,7 +291,7 @@ fn route(req: Any) -> [Any] {
 
     // Phase A — auth-bearing endpoints stub. Land progressively in Phase B/C
     // once AIL #8 (argon2id) provides crypto_hash_password / crypto_verify_password.
-    if method == "POST" and path == "/api/v1/agents"   { return handle_not_implemented(req) }
+    if method == "POST" and path == "/api/v1/agents"   { return handle_register(req) }
     if method == "POST" and path == "/api/v1/identity" { return handle_not_implemented(req) }
     if method == "POST" and path == "/api/v1/will"     { return handle_not_implemented(req) }
     if method == "POST" and path == "/api/v1/bonds"    { return handle_not_implemented(req) }
@@ -187,7 +319,7 @@ fn route(req: Any) -> [Any] {
 
 evolve mneme_server {
     listen: 8091
-    effects: [http.respond, db.execute, db.query, clock.now, env.read]
+    effects: [http.respond, db.execute, db.query, clock.now, env.read, state.read, state.write]
     metric: error_rate
     rollback_on: error_rate > 0.9
     history: keep_last 100
