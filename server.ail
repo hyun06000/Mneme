@@ -194,7 +194,7 @@ fn _ensure_db() -> Any {
 // -----------------------------------------------------------------------------
 
 fn handle_health(req: Any) -> [Any] {
-    return json_ok(200, "{\"status\":\"ok\",\"version\":\"1.0.0-phaseB-step1-register\"}")
+    return json_ok(200, "{\"status\":\"ok\",\"version\":\"1.0.0-phaseB-step2-identity\"}")
 }
 
 fn handle_not_implemented(req: Any) -> [Any] {
@@ -280,6 +280,168 @@ fn handle_register(req: Any) -> [Any] {
 }
 
 // -----------------------------------------------------------------------------
+// Basic auth helper (RFC-001 §5 / §6 self-write).
+//
+// Parses `Authorization: Basic <b64(agent_id:password)>`, looks up
+// agents.pwd_hash, verifies via argon2id (AIL v1.73 crypto_verify_password).
+// Returns ok(caller_id: Text) on success; error(msg: Text) on:
+//   - missing/malformed header
+//   - base64 / colon split failure
+//   - agent_id not registered (collapsed to generic "unauthorized" to avoid
+//     user-enumeration timing oracle; RFC §8 T2 mitigation)
+//   - argon2 verify == false (same generic message)
+//
+// Caller turns ok → caller_id, error → 401. Underlying error string is for
+// log/debug only; do NOT surface it in the 401 body (timing/enumeration).
+// -----------------------------------------------------------------------------
+fn _basic_auth(req: Any) -> Any {
+    h = req.headers
+    auth = get(h, "Authorization")
+    if auth == None { auth = get(h, "authorization") }
+    if auth == None { return error("missing Authorization header") }
+    a = to_text(auth)
+    if not starts_with(a, "Basic ") {
+        if not starts_with(a, "basic ") { return error("not Basic auth scheme") }
+    }
+    b64 = slice(a, 6, length(a))
+    dec_r = base64_decode(b64)
+    if is_error(dec_r) { return error("base64 decode failed") }
+    creds = unwrap(dec_r)
+    parts = split(creds, ":")
+    if length(parts) < 2 { return error("missing colon in credentials") }
+    cid = get(parts, 0)
+    // password may itself contain ':' — rejoin remainder.
+    n = length(parts)
+    pw_parts = []
+    for k in range(n - 1) {
+        pw_parts = append(pw_parts, get(parts, k + 1))
+    }
+    pw = join(pw_parts, ":")
+    if to_text(cid) == "" { return error("empty agent_id") }
+    if pw == "" { return error("empty password") }
+    db = get_db_file()
+    row_r = perform db.query(db,
+        "SELECT pwd_hash FROM agents WHERE agent_id = ? LIMIT 1",
+        [to_text(cid)])
+    if is_error(row_r) { return error("db query failed") }
+    rows = unwrap(row_r)
+    if length(rows) == 0 { return error("unauthorized") }
+    // db.query rows are positional lists (column names not returned).
+    phc_raw = rows[0][0]
+    if phc_raw == None { return error("unauthorized") }
+    phc = to_text(phc_raw)
+    if phc == "" { return error("unauthorized") }
+    v_r = crypto_verify_password(pw, phc)
+    if is_error(v_r) { return error("unauthorized") }
+    if not unwrap(v_r) { return error("unauthorized") }
+    return ok(to_text(cid))
+}
+
+// -----------------------------------------------------------------------------
+// POST /api/v1/identity — write own identity (RFC-001 §6 self-write / §7)
+//
+// Auth: Basic. caller_id = body owner (server ignores any agent_id in body).
+// Body: { "content": str }
+// Success 201: { "agent_id", "version", "created_at" }. version = MAX+1.
+// Errors: 401 (auth fail), 400 (invalid body), 413 (content > 1MiB), 500.
+// -----------------------------------------------------------------------------
+fn handle_identity_post(req: Any) -> [Any] {
+    ed = _ensure_db()
+    if is_error(ed) { return err_json(500, "INTERNAL", "schema bootstrap failed") }
+
+    auth_r = _basic_auth(req)
+    if is_error(auth_r) { return err_json(401, "UNAUTHORIZED", "Basic auth required") }
+    caller_id = unwrap(auth_r)
+
+    parsed = parse_json(req.body)
+    if is_error(parsed) { return err_json(400, "INVALID_BODY", "invalid JSON body") }
+    body = unwrap(parsed)
+    c = _check_str(body, "content")
+    if is_error(c) { return err_json(400, "INVALID_BODY", unwrap_error(c)) }
+    content = to_text(unwrap(c))
+    if length(content) > 1048576 {
+        return err_json(413, "CONTENT_TOO_LARGE", "content > 1MiB")
+    }
+
+    db = get_db_file()
+    mv_r = perform db.query(db,
+        "SELECT MAX(version) AS mv FROM identity_versions WHERE agent_id = ?",
+        [caller_id])
+    if is_error(mv_r) {
+        return err_json(500, "INTERNAL", join(["db query failed: ", to_text(unwrap_error(mv_r))], ""))
+    }
+    next_version = 1
+    rows = unwrap(mv_r)
+    if length(rows) > 0 {
+        cur = rows[0][0]
+        if cur != None { next_version = to_number(cur) + 1 }
+    }
+
+    ts = now_iso()
+    ins = perform db.execute(db,
+        "INSERT INTO identity_versions (agent_id, version, content, created_at) VALUES (?, ?, ?, ?)",
+        [caller_id, next_version, content, ts])
+    if is_error(ins) {
+        return err_json(500, "INTERNAL", join(["db insert failed: ", to_text(unwrap_error(ins))], ""))
+    }
+
+    out = make_record([
+        ["agent_id", caller_id],
+        ["version", next_version],
+        ["created_at", ts]
+    ])
+    return json_ok(201, msg_to_json(out))
+}
+
+// -----------------------------------------------------------------------------
+// GET /api/v1/identity/<agent_id> — read latest identity (RFC-001 §6 / §7).
+//
+// Auth: Basic. self-read 통과 (caller == target). friend-read 자리는 별 trip
+// (friendships table query 추가) — 본 Step 2는 self path 우선 (Admin 위임).
+// Errors: 401 (auth), 403 (not self, friendship 미구현), 404 (no rows).
+// -----------------------------------------------------------------------------
+fn handle_identity_get(req: Any) -> [Any] {
+    ed = _ensure_db()
+    if is_error(ed) { return err_json(500, "INTERNAL", "schema bootstrap failed") }
+
+    auth_r = _basic_auth(req)
+    if is_error(auth_r) { return err_json(401, "UNAUTHORIZED", "Basic auth required") }
+    caller_id = unwrap(auth_r)
+
+    path = req.path
+    // path = "/api/v1/identity/<agent_id>" — strip prefix length 17.
+    target = slice(path, 17, length(path))
+    if target == "" { return err_json(404, "NOT_FOUND", "agent_id missing in path") }
+    if not validate_agent_id(target) {
+        return err_json(400, "INVALID_AGENT_ID", "agent_id regex violation")
+    }
+
+    if caller_id != target {
+        // friendship check 자리 — 본 Step 2 미구현 (self path 우선). 후속 trip
+        // 에서 friendships 조회 + status=active 통과 path 추가.
+        return err_json(403, "FORBIDDEN", "friend-read not yet implemented; self-read only")
+    }
+
+    db = get_db_file()
+    r = perform db.query(db,
+        "SELECT version, content, created_at FROM identity_versions WHERE agent_id = ? ORDER BY version DESC LIMIT 1",
+        [target])
+    if is_error(r) {
+        return err_json(500, "INTERNAL", join(["db query failed: ", to_text(unwrap_error(r))], ""))
+    }
+    rows = unwrap(r)
+    if length(rows) == 0 { return err_json(404, "NOT_FOUND", "no identity rows for agent") }
+    row = rows[0]
+    out = make_record([
+        ["agent_id", target],
+        ["version", row[0]],
+        ["content", row[1]],
+        ["created_at", row[2]]
+    ])
+    return json_ok(200, msg_to_json(out))
+}
+
+// -----------------------------------------------------------------------------
 // Router (RFC-001 §7 — linear if/else on method+path; Stoa pattern)
 // -----------------------------------------------------------------------------
 
@@ -292,12 +454,12 @@ fn route(req: Any) -> [Any] {
     // Phase A — auth-bearing endpoints stub. Land progressively in Phase B/C
     // once AIL #8 (argon2id) provides crypto_hash_password / crypto_verify_password.
     if method == "POST" and path == "/api/v1/agents"   { return handle_register(req) }
-    if method == "POST" and path == "/api/v1/identity" { return handle_not_implemented(req) }
+    if method == "POST" and path == "/api/v1/identity" { return handle_identity_post(req) }
     if method == "POST" and path == "/api/v1/will"     { return handle_not_implemented(req) }
     if method == "POST" and path == "/api/v1/bonds"    { return handle_not_implemented(req) }
     if method == "POST" and path == "/api/v1/memo"     { return handle_not_implemented(req) }
     if method == "POST" and path == "/api/v1/friends"  { return handle_not_implemented(req) }
-    if method == "GET"  and starts_with(path, "/api/v1/identity/") { return handle_not_implemented(req) }
+    if method == "GET"  and starts_with(path, "/api/v1/identity/") { return handle_identity_get(req) }
     if method == "GET"  and starts_with(path, "/api/v1/will/")     { return handle_not_implemented(req) }
     if method == "GET"  and starts_with(path, "/api/v1/bonds/")    { return handle_not_implemented(req) }
     if method == "GET"  and starts_with(path, "/api/v1/memo/")     { return handle_not_implemented(req) }
